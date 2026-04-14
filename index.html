@@ -278,6 +278,20 @@
 <body>
 <div id="stars"></div>
 
+<!-- ── 隱藏表單（用於真實 POST 按讚） ── -->
+<form id="likeForm0" action="https://www.i-kuantao.com/web.php"
+      method="POST" target="likeWin0" style="display:none">
+  <input name="html"     value="Like_top">
+  <input name="header"   value="no">
+  <input name="nofooter" value="yes">
+</form>
+<form id="likeForm1" action="https://www.baiyangtemple.com/web.php"
+      method="POST" target="likeWin1" style="display:none">
+  <input name="html"     value="Like_top">
+  <input name="header"   value="no">
+  <input name="nofooter" value="yes">
+</form>
+
 <!-- ── 驗證頁模態框 ── -->
 <div id="verifyModal">
   <div class="verify-card" id="verifyCard">
@@ -1092,12 +1106,21 @@ document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('step1').style.display = 'none';
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
 
-  // ── 必須在使用者手勢觸發的當下立即開啟視窗，才不會被瀏覽器擋住 ──
-  const popupOpts = 'width=1000,height=700,left=80,top=60,toolbar=0,menubar=0,location=1,scrollbars=1,resizable=1';
-  const popupWins = SITES.map(site => {
-    try { return window.open(site.url, '_blank_' + site.dot, popupOpts); }
-    catch(e) { return null; }
-  });
+  // ── 用隱藏表單 POST 送出（帶完整 cookie，繞過 SameSite 限制）──
+  // 先開空白視窗（確保兩個都能開），再用表單 POST 送進去
+  const pw = Math.floor(screen.availWidth / 2);
+  const ph = Math.floor(screen.availHeight * 0.85);
+  const popupWins = [];
+  try {
+    popupWins.push(window.open('', 'likeWin0',
+      `width=${pw},height=${ph},left=0,top=0,toolbar=0,menubar=0,location=1,scrollbars=1`));
+    document.getElementById('likeForm0').submit();   // POST 送進 likeWin0
+  } catch(e) { popupWins.push(null); }
+  try {
+    popupWins.push(window.open('', 'likeWin1',
+      `width=${pw},height=${ph},left=${pw},top=0,toolbar=0,menubar=0,location=1,scrollbars=1`));
+    document.getElementById('likeForm1').submit();   // POST 送進 likeWin1
+  } catch(e) { popupWins.push(null); }
 
   // 重置進度點
   ['rp1','rp2'].forEach(id => {
@@ -1111,7 +1134,9 @@ document.getElementById('btnCheckin').onclick = async () => {
   }
 
   // 動畫結束後關閉真實視窗
-  popupWins.forEach(w => { try { if (w && !w.closed) w.close(); } catch(e) {} });
+  ['likeWin0','likeWin1'].forEach(name => {
+    try { const w = window.open('', name); if (w) w.close(); } catch(e) {}
+  });
 
   setRobotStatus('🎉 兩個網站都按讚完成！');
   await delay(1200);
