@@ -278,20 +278,6 @@
 <body>
 <div id="stars"></div>
 
-<!-- ── 隱藏表單（用於真實 POST 按讚） ── -->
-<form id="likeForm0" action="https://www.i-kuantao.com/web.php"
-      method="POST" target="likeWin0" style="display:none">
-  <input name="html"     value="Like_top">
-  <input name="header"   value="no">
-  <input name="nofooter" value="yes">
-</form>
-<form id="likeForm1" action="https://www.baiyangtemple.com/web.php"
-      method="POST" target="likeWin1" style="display:none">
-  <input name="html"     value="Like_top">
-  <input name="header"   value="no">
-  <input name="nofooter" value="yes">
-</form>
-
 <!-- ── 驗證頁模態框 ── -->
 <div id="verifyModal">
   <div class="verify-card" id="verifyCard">
@@ -1106,17 +1092,15 @@ document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('step1').style.display = 'none';
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
 
-  // ── 用隱藏表單 POST 送出（視窗開在螢幕外，使用者看不到）──
-  const offscreen = `width=1,height=1,left=${screen.availWidth + 100},top=${screen.availHeight + 100},toolbar=0,menubar=0,location=0,scrollbars=0,resizable=0`;
-  const popupWins = [];
-  try {
-    popupWins.push(window.open('', 'likeWin0', offscreen));
-    document.getElementById('likeForm0').submit();
-  } catch(e) { popupWins.push(null); }
-  try {
-    popupWins.push(window.open('', 'likeWin1', offscreen));
-    document.getElementById('likeForm1').submit();
-  } catch(e) { popupWins.push(null); }
+  // ── 背景靜默 POST（不帶 cookie → server 每次都放行）──
+  SITES.forEach(site => {
+    fetch(site.api, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'html=Like_top&header=no&nofooter=yes'
+    }).catch(() => {});
+  });
 
   // 重置進度點
   ['rp1','rp2'].forEach(id => {
@@ -1129,10 +1113,6 @@ document.getElementById('btnCheckin').onclick = async () => {
     await robotLikeSite(site);
   }
 
-  // 動畫結束後關閉真實視窗
-  ['likeWin0','likeWin1'].forEach(name => {
-    try { const w = window.open('', name); if (w) w.close(); } catch(e) {}
-  });
 
   setRobotStatus('🎉 兩個網站都按讚完成！');
   await delay(1200);
