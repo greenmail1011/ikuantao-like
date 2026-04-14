@@ -206,7 +206,7 @@
     /* 慶祝 */
     #celebrate{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
     #celebrate.show{display:flex}
-    .cel-card{background:linear-gradient(135deg,#0d2a5e,#1a4a8a);border:1px solid rgba(240,208,112,.35);border-radius:28px;padding:36px 44px;text-align:center;animation:popIn .35s ease-out;max-width:300px;width:90%}
+    .cel-card{background:linear-gradient(135deg,#0d2a5e,#1a4a8a);border:1px solid rgba(240,208,112,.35);border-radius:28px;padding:36px 44px;text-align:center;animation:popIn .35s ease-out;max-width:320px;width:90%}
     @keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
     .cel-emoji{font-size:4rem;margin-bottom:10px}
     .cel-title{color:#f0d070;font-size:1.4rem;font-weight:bold;letter-spacing:2px;margin-bottom:6px}
@@ -214,11 +214,83 @@
     .cel-streak{font-size:2.2rem;font-weight:bold;color:#ff8c42;margin-bottom:14px}
     .btn-cel{padding:12px 32px;border-radius:50px;border:none;background:linear-gradient(135deg,#f0a500,#c97a00);color:white;font-size:.95rem;font-weight:bold;cursor:pointer}
 
+    /* 驗證連結區 */
+    .verify-area{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
+    .verify-label{font-size:.72rem;color:rgba(170,196,232,.5);margin-bottom:8px;letter-spacing:1px}
+    .verify-url-box{
+      display:flex;align-items:center;gap:6px;
+      background:rgba(0,0,0,.3);border:1px solid rgba(74,158,255,.25);
+      border-radius:10px;padding:8px 12px;margin-bottom:8px;
+    }
+    .verify-url-text{
+      flex:1;font-size:.68rem;color:#4a9eff;font-family:monospace;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;
+    }
+    .btn-copy{
+      flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;
+      background:linear-gradient(135deg,#4a9eff,#2255aa);color:white;
+      font-size:.72rem;font-weight:bold;cursor:pointer;transition:transform .15s;
+      white-space:nowrap;
+    }
+    .btn-copy:hover{transform:translateY(-1px)}
+    .copy-toast{font-size:.72rem;color:#4caf82;min-height:18px;transition:opacity .3s}
+
+    /* 驗證頁模態框 */
+    #verifyModal{
+      display:none;position:fixed;inset:0;z-index:400;
+      background:rgba(4,8,24,.95);backdrop-filter:blur(8px);
+      align-items:center;justify-content:center;
+    }
+    #verifyModal.show{display:flex}
+    .verify-card{
+      background:linear-gradient(135deg,#0a2040,#152e5a);
+      border:1px solid rgba(240,208,112,.3);border-radius:28px;
+      padding:40px 44px;text-align:center;
+      animation:popIn .35s ease-out;max-width:340px;width:90%;
+    }
+    .verify-card .v-emoji{font-size:4rem;margin-bottom:12px}
+    .verify-card .v-title{color:#f0d070;font-size:1.3rem;font-weight:bold;letter-spacing:2px;margin-bottom:16px}
+    .verify-card .v-name{color:white;font-size:1.1rem;font-weight:bold;margin-bottom:6px}
+    .verify-card .v-date{color:rgba(170,196,232,.55);font-size:.8rem;margin-bottom:12px}
+    .verify-card .v-streak{font-size:2rem;font-weight:bold;color:#ff8c42;margin-bottom:20px}
+    .verify-card .v-sites{font-size:.75rem;color:rgba(170,196,232,.5);margin-bottom:20px;line-height:1.8}
+    .verify-card .v-badge{
+      display:inline-flex;align-items:center;gap:6px;
+      background:rgba(76,175,130,.15);border:1px solid rgba(76,175,130,.35);
+      border-radius:20px;padding:6px 16px;font-size:.78rem;color:#4caf82;
+      margin-bottom:20px;
+    }
+    .btn-back{
+      padding:12px 32px;border-radius:50px;border:none;
+      background:linear-gradient(135deg,#4a9eff,#2255aa);
+      color:white;font-size:.9rem;font-weight:bold;cursor:pointer;
+      transition:transform .15s;
+    }
+    .btn-back:hover{transform:translateY(-2px)}
+
+    /* 驗證失敗 */
+    .verify-fail .v-emoji{filter:grayscale(1)}
+    .verify-fail .v-title{color:#ff6b6b}
+
     .demo-banner{background:rgba(240,165,0,.13);border:1px solid rgba(240,165,0,.3);border-radius:10px;padding:9px 14px;font-size:.74rem;color:rgba(240,208,112,.8);margin-bottom:12px;text-align:center;line-height:1.7}
   </style>
 </head>
 <body>
 <div id="stars"></div>
+
+<!-- ── 驗證頁模態框 ── -->
+<div id="verifyModal">
+  <div class="verify-card" id="verifyCard">
+    <div class="v-emoji" id="vEmoji">✅</div>
+    <div class="v-title" id="vTitle">驗證成功！</div>
+    <div class="v-name" id="vName"></div>
+    <div class="v-date" id="vDate"></div>
+    <div class="v-streak" id="vStreak"></div>
+    <div class="v-sites" id="vSites"></div>
+    <div class="v-badge" id="vBadge">✅ 已完成今日按讚</div>
+    <button class="btn-back" onclick="window.location.href=window.location.origin+window.location.pathname">回主頁</button>
+  </div>
+</div>
 
 <!-- 登入頁 -->
 <div id="page-login" class="page active">
@@ -281,6 +353,17 @@
         <div style="font-size:2rem;margin-bottom:8px">✅</div>
         <div style="color:#4caf82;font-weight:bold">今日已完成簽到！</div>
         <div style="color:rgba(170,196,232,.45);font-size:.75rem;margin-top:6px">明天再來繼續累積連續天數</div>
+        <!-- 已簽到時顯示今日驗證連結 -->
+        <div id="todayVerifyArea" style="display:none;margin-top:14px">
+          <div class="verify-area">
+            <div class="verify-label">📋 今日驗證連結</div>
+            <div class="verify-url-box">
+              <span class="verify-url-text" id="todayVerifyUrl"></span>
+              <button class="btn-copy" onclick="copyVerifyUrl('todayVerifyUrl','todayVerifyCopyMsg')">複製</button>
+            </div>
+            <div class="copy-toast" id="todayVerifyCopyMsg"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -336,6 +419,16 @@
     <div class="cel-sub" id="celSub">繼續加油！</div>
     <div class="cel-streak" id="celStreak">🔥 1 天</div>
     <button class="btn-cel" id="btnCloseCel">太好了！</button>
+
+    <!-- ── 驗證連結區 ── -->
+    <div class="verify-area" id="verifyArea" style="display:none">
+      <div class="verify-label">📋 分享驗證連結，讓他人確認您已完成按讚</div>
+      <div class="verify-url-box">
+        <span class="verify-url-text" id="verifyUrlText"></span>
+        <button class="btn-copy" onclick="copyVerifyUrl('verifyUrlText','verifyMsg')">複製</button>
+      </div>
+      <div class="copy-toast" id="verifyMsg"></div>
+    </div>
   </div>
 </div>
 
@@ -438,6 +531,119 @@ function listenLeaderboard(cb) {
   fbDb.ref('users').on('value', s => cb(toList(s.val())));
 }
 
+// ══════════════════════════════════════════
+// ── 驗證連結功能 ───────────────────────────
+// ══════════════════════════════════════════
+
+/** 產生短 token（8碼隨機 + 日期，共約16碼） */
+function genToken() {
+  const rand = Math.random().toString(36).slice(2, 10);
+  const datePart = today().replace(/-/g, '');
+  return datePart + rand; // 例：20250415a3f9z2kq
+}
+
+/** 儲存驗證記錄到 Firebase（或 localStorage for DEMO） */
+async function saveVerification(token, data) {
+  if (DEMO) {
+    localStorage.setItem('verify_' + token, JSON.stringify(data));
+    return;
+  }
+  await fbDb.ref('verifications/' + token).set(data);
+}
+
+/** 從 Firebase 取得驗證記錄 */
+async function getVerification(token) {
+  if (DEMO) {
+    const v = localStorage.getItem('verify_' + token);
+    return v ? JSON.parse(v) : null;
+  }
+  try {
+    const s = await fbDb.ref('verifications/' + token).once('value');
+    return s.exists() ? s.val() : null;
+  } catch(e) { return null; }
+}
+
+/** 儲存使用者今日的 token 供「已簽到」區塊顯示 */
+function saveMyToken(token) {
+  localStorage.setItem('myToken_' + today(), token);
+}
+function getMyToken() {
+  return localStorage.getItem('myToken_' + today()) || null;
+}
+
+/** 建立驗證連結 URL */
+function buildVerifyUrl(token) {
+  const base = location.origin + location.pathname;
+  return base + '?verify=' + token;
+}
+
+/** 複製驗證連結 */
+function copyVerifyUrl(urlElId, msgElId) {
+  const url = document.getElementById(urlElId).textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const msg = document.getElementById(msgElId);
+    msg.textContent = '✅ 已複製！';
+    msg.style.opacity = '1';
+    setTimeout(() => { msg.style.opacity = '0'; setTimeout(() => msg.textContent = '', 400); }, 2000);
+  }).catch(() => {
+    // 舊瀏覽器備援
+    const ta = document.createElement('textarea');
+    ta.value = url; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    const msg = document.getElementById(msgElId);
+    msg.textContent = '✅ 已複製！'; msg.style.opacity = '1';
+    setTimeout(() => { msg.style.opacity = '0'; setTimeout(() => msg.textContent = '', 400); }, 2000);
+  });
+}
+
+/** 在慶祝卡顯示驗證連結 */
+function showVerifyLink(token) {
+  const url = buildVerifyUrl(token);
+  document.getElementById('verifyUrlText').textContent = url;
+  document.getElementById('verifyArea').style.display = 'block';
+}
+
+/** 在「已簽到」區塊顯示今日驗證連結（重新整理頁面後仍顯示） */
+function showTodayVerifyLink(token) {
+  const url = buildVerifyUrl(token);
+  document.getElementById('todayVerifyUrl').textContent = url;
+  document.getElementById('todayVerifyArea').style.display = 'block';
+}
+
+// ── 頁面載入時檢查 ?verify=TOKEN ─────────────
+const urlParams = new URLSearchParams(location.search);
+const verifyToken = urlParams.get('verify');
+if (verifyToken) {
+  // 直接顯示驗證頁，不需要登入
+  document.getElementById('page-login').classList.remove('active');
+  const modal = document.getElementById('verifyModal');
+  modal.classList.add('show');
+
+  (async () => {
+    const v = await getVerification(verifyToken);
+    if (v) {
+      document.getElementById('vEmoji').textContent = '✅';
+      document.getElementById('vTitle').textContent = '驗證成功！';
+      document.getElementById('vName').textContent = v.name + ' 已完成今日按讚';
+      document.getElementById('vDate').textContent = '📅 ' + v.date;
+      document.getElementById('vStreak').textContent = '🔥 連續 ' + v.streak + ' 天';
+      document.getElementById('vSites').innerHTML =
+        v.sites ? v.sites.map(s => '✅ ' + s).join('<br>') : '';
+      document.getElementById('vBadge').textContent = '✅ 已完成今日按讚';
+    } else {
+      // 驗證失敗
+      document.getElementById('verifyCard').classList.add('verify-fail');
+      document.getElementById('vEmoji').textContent = '❌';
+      document.getElementById('vTitle').textContent = '驗證失敗';
+      document.getElementById('vName').textContent = '找不到此驗證記錄';
+      document.getElementById('vDate').textContent = '連結可能已過期或有誤';
+      document.getElementById('vStreak').textContent = '';
+      document.getElementById('vSites').textContent = '';
+      document.getElementById('vBadge').style.display = 'none';
+    }
+  })();
+}
+
 // ── UI ────────────────────────────────────
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -467,8 +673,13 @@ async function refreshStats() {
   const done = !!(d.checkIns?.[today()]);
   document.getElementById('checkinStatus').textContent = done ? '✅ 今日已完成簽到' : '今日尚未簽到';
   document.getElementById('step1').style.display = done ? 'none' : 'block';
-  document.getElementById('step2').style.display = 'none';
   document.getElementById('step3').style.display = done ? 'block' : 'none';
+
+  // 若今日已簽到，嘗試顯示今日驗證連結
+  if (done) {
+    const myTok = getMyToken();
+    if (myTok) showTodayVerifyLink(myTok);
+  }
 }
 
 function renderLB(list) {
@@ -517,7 +728,6 @@ document.getElementById('btnAnon').onclick = async () => {
   }
   try {
     await fbAuth.signInAnonymously();
-    // onAuthStateChanged 接手，但需要 name
     window._pendingName = name;
   } catch(e) { alert('登入失敗：' + e.message); }
 };
@@ -672,6 +882,21 @@ document.getElementById('btnCheckin').onclick = async () => {
   await refreshStats();
   const d = await getMyData();
   const streak = calcStreak(d.checkIns);
+
+  // ── 產生並儲存驗證 token ──
+  const token = genToken();
+  const verifyData = {
+    name:  currentUser.name,
+    date:  today(),
+    streak: streak,
+    sites: SITES.map(s => s.name),
+    ts:    Date.now()
+  };
+  await saveVerification(token, verifyData);
+  saveMyToken(token);   // 存到 localStorage，重新整理後仍可顯示
+  showVerifyLink(token);
+
+  // 慶祝
   const emoji = streak >= 30 ? '👑' : streak >= 7 ? '🔥' : '🎉';
   const sub = streak >= 365 ? '感恩護持一整年！' : streak >= 100 ? '百日功德，感恩您的虔誠！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來！';
   document.getElementById('celEmoji').textContent = emoji;
@@ -681,20 +906,6 @@ document.getElementById('btnCheckin').onclick = async () => {
   listenLeaderboard(renderLB);
 };
 
-document.getElementById('btnConfirm').onclick = async () => {
-  const ok = await doCheckIn();
-  if (!ok) { alert('今日已簽到囉！'); return; }
-  await refreshStats();
-  const d = await getMyData();
-  const streak = calcStreak(d.checkIns);
-  const emoji = streak >= 30 ? '👑' : streak >= 7 ? '🔥' : '🎉';
-  const sub = streak >= 365 ? '感恩護持一整年！您已是傳道者！' : streak >= 100 ? '百日功德，感恩您的虔誠！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來簽到！';
-  document.getElementById('celEmoji').textContent = emoji;
-  document.getElementById('celSub').textContent = sub;
-  document.getElementById('celStreak').textContent = '🔥 連續 ' + streak + ' 天';
-  document.getElementById('celebrate').classList.add('show');
-  listenLeaderboard(renderLB);
-};
 document.getElementById('btnCloseCel').onclick = () => document.getElementById('celebrate').classList.remove('show');
 
 // ── 分頁切換 ──────────────────────────────
