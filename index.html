@@ -119,6 +119,90 @@
     .lb-streak{font-size:.82rem;color:#ff8c42}
     .lb-total{font-size:.7rem;color:rgba(170,196,232,.45)}
 
+    /* ── 機器人動畫覆蓋 ── */
+    #robotOverlay{
+      display:none;position:fixed;inset:0;z-index:200;
+      background:rgba(4,8,24,.92);backdrop-filter:blur(6px);
+      align-items:center;justify-content:center;flex-direction:column;
+    }
+    #robotOverlay.show{display:flex}
+
+    .robot-browser{
+      width:min(560px,94vw);border-radius:16px;overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,.6);
+      animation:slideUp .4s ease-out;
+    }
+    @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+    .rb-bar{
+      background:#1e1e2e;padding:10px 14px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .rb-dots{display:flex;gap:5px}
+    .rb-dot{width:10px;height:10px;border-radius:50%}
+    .rb-dot.r{background:#ff5f57}.rb-dot.y{background:#febc2e}.rb-dot.g{background:#28c840}
+    .rb-url{
+      flex:1;background:#2a2a3e;border-radius:6px;padding:5px 10px;
+      font-size:.75rem;color:#8888aa;font-family:monospace;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+
+    .rb-content{
+      background:#0d1135;height:220px;position:relative;overflow:hidden;
+    }
+    .rb-iframe{width:100%;height:100%;border:none;transform-origin:top left}
+    .rb-loading{
+      position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      flex-direction:column;gap:10px;color:rgba(170,196,232,.5);font-size:.82rem;
+    }
+    .rb-spinner{
+      width:32px;height:32px;border:3px solid rgba(74,158,255,.2);
+      border-top-color:#4a9eff;border-radius:50%;
+      animation:spin .8s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* 游標 */
+    #rbCursor{
+      position:absolute;width:20px;height:20px;pointer-events:none;
+      z-index:10;transition:all .6s cubic-bezier(.4,0,.2,1);
+      filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
+    }
+    #rbCursor svg{width:20px;height:20px}
+
+    /* 點擊漣漪 */
+    .rb-ripple{
+      position:absolute;width:40px;height:40px;border-radius:50%;
+      border:2px solid #f0a500;pointer-events:none;
+      animation:rippleOut .5s ease-out forwards;
+      transform:translate(-50%,-50%);
+    }
+    @keyframes rippleOut{from{transform:translate(-50%,-50%) scale(0);opacity:1}to{transform:translate(-50%,-50%) scale(2.5);opacity:0}}
+
+    /* +1 浮動文字 */
+    .rb-plus{
+      position:absolute;font-size:1.1rem;font-weight:bold;color:#f0d070;
+      pointer-events:none;animation:floatUp .8s ease-out forwards;
+    }
+    @keyframes floatUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-50px);opacity:0}}
+
+    /* 狀態文字 */
+    .robot-status{
+      margin-top:16px;text-align:center;
+    }
+    .robot-status-text{
+      color:#aac4e8;font-size:.88rem;letter-spacing:1px;margin-bottom:8px;min-height:24px;
+    }
+    .robot-progress{
+      display:flex;gap:8px;justify-content:center;align-items:center;
+    }
+    .rp-dot{
+      width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);
+      transition:background .3s,transform .3s;
+    }
+    .rp-dot.active{background:#4a9eff;transform:scale(1.3)}
+    .rp-dot.done{background:#4caf82}
+
     /* 慶祝 */
     #celebrate{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
     #celebrate.show{display:flex}
@@ -192,15 +276,7 @@
     </div>
     <div class="card checkin-area">
       <div class="checkin-status" id="checkinStatus">今日尚未簽到</div>
-      <div id="step1"><button class="btn-checkin" id="btnCheckin">👍 今日簽到</button></div>
-      <div id="step2" style="display:none">
-        <p style="color:rgba(170,196,232,.65);font-size:.82rem;margin-bottom:6px">請前往兩個網站點讚，完成後回來確認</p>
-        <div class="step2-btns">
-          <a class="btn-site" href="https://www.i-kuantao.com" target="_blank">🌐 一貫道全球資訊網</a>
-          <a class="btn-site" href="https://www.baiyangtemple.com" target="_blank">🏛️ 白陽聖廟</a>
-        </div>
-        <button class="btn-confirm" id="btnConfirm">✅ 確認完成按讚</button>
-      </div>
+      <div id="step1"><button class="btn-checkin" id="btnCheckin">🤖 自動按讚簽到</button></div>
       <div id="step3" style="display:none">
         <div style="font-size:2rem;margin-bottom:8px">✅</div>
         <div style="color:#4caf82;font-weight:bold">今日已完成簽到！</div>
@@ -214,6 +290,40 @@
     <div class="card">
       <div class="card-label">🏆 連續簽到排行榜</div>
       <div id="lbList"><div style="text-align:center;color:rgba(170,196,232,.35);padding:20px;font-size:.82rem">載入中…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 機器人動畫 -->
+<div id="robotOverlay">
+  <div class="robot-browser" id="robotBrowser">
+    <div class="rb-bar">
+      <div class="rb-dots">
+        <div class="rb-dot r"></div>
+        <div class="rb-dot y"></div>
+        <div class="rb-dot g"></div>
+      </div>
+      <div class="rb-url" id="rbUrl">https://</div>
+    </div>
+    <div class="rb-content" id="rbContent">
+      <div class="rb-loading" id="rbLoading">
+        <div class="rb-spinner"></div>
+        <span>載入中…</span>
+      </div>
+      <iframe id="rbIframe" class="rb-iframe" style="display:none" scrolling="no"></iframe>
+      <div id="rbCursor" style="left:50%;top:50%">
+        <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 0 L4 18 L8 14 L12 22 L14 21 L10 13 L16 13 Z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="robot-status">
+    <div class="robot-status-text" id="robotStatusText">準備中…</div>
+    <div class="robot-progress">
+      <div class="rp-dot" id="rp1"></div>
+      <div style="width:20px;height:1px;background:rgba(255,255,255,.2)"></div>
+      <div class="rp-dot" id="rp2"></div>
     </div>
   </div>
 </div>
@@ -439,12 +549,136 @@ if (DEMO) {
 }
 
 // ── 簽到按鈕 ──────────────────────────────
-document.getElementById('btnCheckin').onclick = () => {
+// ── 機器人自動按讚 ────────────────────────
+const SITES = [
+  { name:'一貫道全球資訊網', url:'https://www.i-kuantao.com', api:'https://www.i-kuantao.com/web.php',       dot:'rp1' },
+  { name:'白陽聖廟',         url:'https://www.baiyangtemple.com', api:'https://www.baiyangtemple.com/web.php', dot:'rp2' },
+];
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+function setRobotStatus(txt) { document.getElementById('robotStatusText').textContent = txt; }
+function setRobotUrl(url) { document.getElementById('rbUrl').textContent = url; }
+
+async function moveCursor(x, y) {
+  const cursor = document.getElementById('rbCursor');
+  cursor.style.left = x + 'px';
+  cursor.style.top  = y + 'px';
+  await delay(700);
+}
+
+function showRipple(x, y) {
+  const content = document.getElementById('rbContent');
+  const r = document.createElement('div');
+  r.className = 'rb-ripple';
+  r.style.left = x + 'px'; r.style.top = y + 'px';
+  content.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+
+  const plus = document.createElement('div');
+  plus.className = 'rb-plus';
+  plus.textContent = '👍 +1';
+  plus.style.left = (x - 20) + 'px'; plus.style.top = (y - 20) + 'px';
+  content.appendChild(plus);
+  setTimeout(() => plus.remove(), 900);
+}
+
+async function robotLikeSite(site, index) {
+  const dot = document.getElementById(site.dot);
+  dot.classList.add('active');
+
+  // 開啟
+  setRobotStatus(`正在開啟 ${site.name}…`);
+  setRobotUrl(site.url);
+  document.getElementById('rbLoading').style.display = 'flex';
+  document.getElementById('rbIframe').style.display = 'none';
+  document.getElementById('rbCursor').style.opacity = '0';
+  await delay(1000);
+
+  // 載入 iframe
+  const iframe = document.getElementById('rbIframe');
+  iframe.src = site.api + '?html=Like_top&header=no&nofooter=yes&t=' + Date.now();
+  await delay(1400);
+  document.getElementById('rbLoading').style.display = 'none';
+  iframe.style.display = 'block';
+  await delay(800);
+
+  // 移動游標到按讚按鈕位置（中央偏上）
+  setRobotStatus(`正在尋找按讚按鈕…`);
+  const cursor = document.getElementById('rbCursor');
+  cursor.style.opacity = '1';
+  cursor.style.transition = 'none';
+  cursor.style.left = '20px'; cursor.style.top = '180px';
+  await delay(100);
+  cursor.style.transition = 'all .6s cubic-bezier(.4,0,.2,1)';
+  await moveCursor(230, 60);
+  await moveCursor(230, 45);
+
+  // 點擊
+  setRobotStatus(`點讚中…`);
+  cursor.style.transform = 'scale(.85)';
+  showRipple(230, 45);
+
+  // 實際發送請求
+  try {
+    await fetch(site.api, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'html=Like_top&header=no&nofooter=yes'
+    });
+  } catch(e) {}
+
+  await delay(300);
+  cursor.style.transform = 'scale(1)';
+  await delay(600);
+
+  // 完成
+  setRobotStatus(`✅ ${site.name} 按讚成功！`);
+  dot.classList.remove('active');
+  dot.classList.add('done');
+  await delay(1000);
+
+  // 關閉 iframe
+  iframe.src = '';
+  iframe.style.display = 'none';
+  document.getElementById('rbLoading').style.display = 'flex';
+  cursor.style.opacity = '0';
+  await delay(500);
+}
+
+document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('step1').style.display = 'none';
-  document.getElementById('step2').style.display = 'block';
-  document.getElementById('checkinStatus').textContent = '請完成兩個網站的按讚 →';
-  window.open('https://www.i-kuantao.com', '_blank');
-  setTimeout(() => window.open('https://www.baiyangtemple.com', '_blank'), 700);
+  document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
+
+  // 重置進度點
+  ['rp1','rp2'].forEach(id => {
+    document.getElementById(id).className = 'rp-dot';
+  });
+
+  document.getElementById('robotOverlay').classList.add('show');
+
+  for (const site of SITES) {
+    await robotLikeSite(site, SITES.indexOf(site));
+  }
+
+  setRobotStatus('🎉 兩個網站都按讚完成！');
+  await delay(1200);
+  document.getElementById('robotOverlay').classList.remove('show');
+
+  // 記錄簽到
+  const ok = await doCheckIn();
+  if (!ok) { await refreshStats(); return; }
+  await refreshStats();
+  const d = await getMyData();
+  const streak = calcStreak(d.checkIns);
+  const emoji = streak >= 30 ? '👑' : streak >= 7 ? '🔥' : '🎉';
+  const sub = streak >= 365 ? '感恩護持一整年！' : streak >= 100 ? '百日功德，感恩您的虔誠！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來！';
+  document.getElementById('celEmoji').textContent = emoji;
+  document.getElementById('celSub').textContent = sub;
+  document.getElementById('celStreak').textContent = '🔥 連續 ' + streak + ' 天';
+  document.getElementById('celebrate').classList.add('show');
+  listenLeaderboard(renderLB);
 };
 
 document.getElementById('btnConfirm').onclick = async () => {
