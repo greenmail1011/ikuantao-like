@@ -387,6 +387,19 @@
           </div>
         </div>
 
+        <!-- 🧪 測試用：清除今日簽到紀錄 -->
+        <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,100,100,.15)">
+          <button onclick="clearTodayCheckin()" style="
+            padding:7px 18px;border-radius:20px;border:1px solid rgba(255,80,80,.35);
+            background:rgba(255,80,80,.1);color:rgba(255,120,120,.8);
+            font-size:.72rem;cursor:pointer;letter-spacing:1px;
+            transition:background .2s;
+          " onmouseover="this.style.background='rgba(255,80,80,.22)'"
+             onmouseout="this.style.background='rgba(255,80,80,.1)'">
+            🧪 清除今日簽到（測試用）
+          </button>
+        </div>
+
         <!-- 今日驗證連結（可分享） -->
         <div id="todayVerifyArea" style="display:none;margin-top:14px">
           <div class="verify-area">
@@ -1149,6 +1162,27 @@ document.getElementById('tabRank').onclick = () => {
   document.getElementById('tabHome').classList.remove('active');
   document.getElementById('tabRank').classList.add('active');
 };
+
+// ── 🧪 測試用：清除今日簽到 ──────────────
+async function clearTodayCheckin() {
+  if (!confirm('確定要清除今日簽到紀錄嗎？（測試用）')) return;
+  const t = today();
+  if (DEMO) {
+    const u = demoUsers(), me = u[currentUser.uid];
+    if (me && me.checkIns?.[t]) {
+      delete me.checkIns[t];
+      me.totalDays = Math.max(0, (me.totalDays || 1) - 1);
+      saveDemo(u);
+    }
+  } else {
+    await fbDb.ref(`users/${currentUser.uid}/checkIns/${t}`).remove();
+    await fbDb.ref(`users/${currentUser.uid}/totalDays`).transaction(v => Math.max(0, (v || 1) - 1));
+  }
+  // 清除 localStorage 的 token
+  localStorage.removeItem('myToken_' + t);
+  document.getElementById('todayVerifyArea').style.display = 'none';
+  await refreshStats();
+}
 
 // ── 登出 ──────────────────────────────────
 document.getElementById('btnLogout').onclick = async () => {
