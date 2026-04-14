@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一貫道 · 每日按讚簽到</title>
+
+  <!-- Firebase compat SDK（支援 file:// 本機開啟） -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Noto Sans TC','微軟正黑體',sans-serif;
+      background:linear-gradient(135deg,#080f2e 0%,#0d1b4b 60%,#080f2e 100%);
+      min-height:100vh;color:white;
+    }
+    #stars{position:fixed;inset:0;pointer-events:none;z-index:0}
+    .star{position:absolute;background:white;border-radius:50%;animation:tw 3s infinite alternate}
+    @keyframes tw{from{opacity:.1}to{opacity:.7}}
+
+    .page{display:none;position:relative;z-index:1;width:100%;max-width:680px;margin:0 auto;padding:24px 16px 80px}
+    .page.active{display:block}
+
+    /* 登入 */
+    #page-login{
+      display:none;flex-direction:column;align-items:center;
+      justify-content:center;min-height:100vh;padding:24px;
+    }
+    #page-login.active{display:flex}
+    .login-box{width:100%;max-width:340px;text-align:center}
+    .login-logo{font-size:4rem;margin-bottom:14px}
+    .login-box h2{color:#f0d070;font-size:1.5rem;letter-spacing:3px;margin-bottom:6px}
+    .login-sub{color:rgba(170,196,232,.6);font-size:.82rem;margin-bottom:30px}
+
+    .btn-google{
+      width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+      padding:14px;border-radius:50px;border:none;cursor:pointer;
+      background:white;color:#333;font-size:.95rem;font-weight:bold;
+      box-shadow:0 4px 20px rgba(0,0,0,.3);transition:transform .15s,box-shadow .15s;
+      margin-bottom:14px;letter-spacing:.5px;
+    }
+    .btn-google:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.4)}
+    .btn-google img{width:22px;height:22px}
+
+    .divider{display:flex;align-items:center;gap:10px;margin:4px 0 14px;color:rgba(255,255,255,.25);font-size:.78rem}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.15)}
+
+    .name-input{
+      width:100%;padding:13px 20px;border-radius:50px;margin-bottom:10px;
+      border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);
+      color:white;font-size:.95rem;outline:none;transition:border .2s;
+    }
+    .name-input:focus{border-color:#4a9eff}
+    .name-input::placeholder{color:rgba(255,255,255,.3)}
+    .btn-anon{
+      width:100%;padding:13px;border-radius:50px;border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.08);color:white;font-size:.9rem;cursor:pointer;
+      letter-spacing:1px;transition:background .2s;
+    }
+    .btn-anon:hover{background:rgba(255,255,255,.16)}
+
+    /* 主頁 */
+    .app-header{text-align:center;margin-bottom:20px}
+    .app-header h1{color:#f0d070;font-size:1.5rem;letter-spacing:3px;margin-bottom:3px}
+    .app-header p{color:rgba(170,196,232,.55);font-size:.78rem}
+
+    .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .user-info{display:flex;align-items:center;gap:8px}
+    .avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+    .avatar img{width:100%;height:100%;object-fit:cover}
+    .uname{color:#f0d070;font-size:.88rem;font-weight:bold}
+    .logout-btn{font-size:.68rem;color:rgba(170,196,232,.3);background:none;border:none;cursor:pointer;padding:1px 4px}
+    .logout-btn:hover{color:rgba(170,196,232,.7)}
+
+    .tab-btns{display:flex;background:rgba(255,255,255,.08);border-radius:30px;padding:3px}
+    .tab-btn{padding:6px 16px;border-radius:24px;border:none;background:transparent;color:rgba(255,255,255,.45);font-size:.78rem;cursor:pointer;transition:all .2s}
+    .tab-btn.active{background:rgba(255,255,255,.15);color:white}
+
+    .card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:20px;padding:20px;margin-bottom:14px}
+    .card-label{font-size:.75rem;color:rgba(170,196,232,.55);margin-bottom:10px;letter-spacing:1px}
+
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+    .stat-box{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 8px;text-align:center}
+    .stat-val{font-size:1.7rem;font-weight:bold;color:#f0d070;line-height:1}
+    .stat-val.fire{color:#ff8c42}
+    .stat-label{font-size:.68rem;color:rgba(170,196,232,.55);margin-top:4px;letter-spacing:1px}
+
+    .badges{display:flex;gap:7px;flex-wrap:wrap}
+    .badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:18px;padding:4px 11px;font-size:.75rem}
+    .badge.locked{opacity:.3}
+
+    .checkin-area{text-align:center;padding:6px 0}
+    .checkin-status{font-size:.82rem;color:rgba(170,196,232,.6);margin-bottom:14px;min-height:22px}
+    .btn-checkin{
+      display:inline-flex;align-items:center;gap:10px;padding:17px 42px;border-radius:60px;border:none;
+      background:linear-gradient(135deg,#f0a500,#e05a00);color:white;font-size:1.05rem;font-weight:bold;letter-spacing:2px;
+      cursor:pointer;box-shadow:0 6px 28px rgba(240,120,0,.45);transition:transform .15s,box-shadow .15s;
+    }
+    .btn-checkin:hover{transform:translateY(-3px);box-shadow:0 10px 36px rgba(240,120,0,.6)}
+    .btn-checkin:active{transform:scale(.97)}
+
+    .step2-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+    .btn-site{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:40px;text-decoration:none;background:rgba(74,158,255,.18);border:1px solid rgba(74,158,255,.3);color:#4a9eff;font-size:.82rem;font-weight:bold;transition:background .2s}
+    .btn-site:hover{background:rgba(74,158,255,.32)}
+    .btn-confirm{margin-top:14px;padding:12px 28px;border-radius:40px;border:none;background:linear-gradient(135deg,#4caf82,#2d8a5e);color:white;font-size:.88rem;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(76,175,130,.35);transition:transform .15s}
+    .btn-confirm:hover{transform:translateY(-2px)}
+
+    /* 排行 */
+    .lb-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;margin-bottom:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+    .lb-row.me{background:rgba(74,158,255,.12);border-color:rgba(74,158,255,.3)}
+    .lb-rank{width:26px;font-size:1rem;text-align:center;font-weight:bold;color:rgba(255,255,255,.35)}
+    .lb-rank.r1{color:#ffd700}.lb-rank.r2{color:#c0c0c0}.lb-rank.r3{color:#cd7f32}
+    .lb-av{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.12);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+    .lb-av img{width:100%;height:100%;object-fit:cover}
+    .lb-name{flex:1;font-size:.88rem;font-weight:bold}
+    .lb-streak{font-size:.82rem;color:#ff8c42}
+    .lb-total{font-size:.7rem;color:rgba(170,196,232,.45)}
+
+    /* 慶祝 */
+    #celebrate{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
+    #celebrate.show{display:flex}
+    .cel-card{background:linear-gradient(135deg,#0d2a5e,#1a4a8a);border:1px solid rgba(240,208,112,.35);border-radius:28px;padding:36px 44px;text-align:center;animation:popIn .35s ease-out;max-width:300px;width:90%}
+    @keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+    .cel-emoji{font-size:4rem;margin-bottom:10px}
+    .cel-title{color:#f0d070;font-size:1.4rem;font-weight:bold;letter-spacing:2px;margin-bottom:6px}
+    .cel-sub{color:rgba(170,196,232,.7);font-size:.82rem;margin-bottom:14px;line-height:1.6}
+    .cel-streak{font-size:2.2rem;font-weight:bold;color:#ff8c42;margin-bottom:14px}
+    .btn-cel{padding:12px 32px;border-radius:50px;border:none;background:linear-gradient(135deg,#f0a500,#c97a00);color:white;font-size:.95rem;font-weight:bold;cursor:pointer}
+
+    .demo-banner{background:rgba(240,165,0,.13);border:1px solid rgba(240,165,0,.3);border-radius:10px;padding:9px 14px;font-size:.74rem;color:rgba(240,208,112,.8);margin-bottom:12px;text-align:center;line-height:1.7}
+  </style>
+</head>
+<body>
+<div id="stars"></div>
+
+<!-- 登入頁 -->
+<div id="page-login" class="page active">
+  <div class="login-box">
+    <div class="login-logo">🙏</div>
+    <h2>每日按讚簽到</h2>
+    <p class="login-sub">一貫道 · 每日護持 · 功德累積</p>
+
+    <button class="btn-google" id="btnGoogle">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
+      使用 Google 帳號登入
+    </button>
+
+    <div class="divider">或使用暱稱登入</div>
+    <input class="name-input" id="nameInput" type="text" placeholder="輸入您的暱稱（最多12字）" maxlength="12">
+    <button class="btn-anon" id="btnAnon">👤 匿名登入</button>
+  </div>
+</div>
+
+<!-- 主頁 -->
+<div id="page-main" class="page">
+  <div class="app-header">
+    <h1>🙏 每日按讚</h1>
+    <p>一貫道 · 每日護持</p>
+  </div>
+
+  <div id="demoBanner" class="demo-banner" style="display:none">
+    ⚠️ 示範模式：資料存於本機。設定 Firebase 後即可啟用多人排行榜。
+  </div>
+
+  <div class="top-bar">
+    <div class="user-info">
+      <div class="avatar" id="avatarEl">🙏</div>
+      <div>
+        <div class="uname" id="unameTxt"></div>
+        <button class="logout-btn" id="btnLogout">登出</button>
+      </div>
+    </div>
+    <div class="tab-btns">
+      <button class="tab-btn active" id="tabHome">🏠 主頁</button>
+      <button class="tab-btn" id="tabRank">🏆 排行</button>
+    </div>
+  </div>
+
+  <!-- 主頁內容 -->
+  <div id="tabHomeContent">
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-val fire" id="sStreak">0</div><div class="stat-label">🔥 連續天數</div></div>
+      <div class="stat-box"><div class="stat-val" id="sTotal">0</div><div class="stat-label">⭐ 累計天數</div></div>
+      <div class="stat-box"><div class="stat-val" id="sRank">-</div><div class="stat-label">🏆 排名</div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">🎖️ 成就徽章</div>
+      <div class="badges" id="badgeList"></div>
+    </div>
+    <div class="card checkin-area">
+      <div class="checkin-status" id="checkinStatus">今日尚未簽到</div>
+      <div id="step1"><button class="btn-checkin" id="btnCheckin">👍 今日簽到</button></div>
+      <div id="step2" style="display:none">
+        <p style="color:rgba(170,196,232,.65);font-size:.82rem;margin-bottom:6px">請前往兩個網站點讚，完成後回來確認</p>
+        <div class="step2-btns">
+          <a class="btn-site" href="https://www.i-kuantao.com" target="_blank">🌐 一貫道全球資訊網</a>
+          <a class="btn-site" href="https://www.baiyangtemple.com" target="_blank">🏛️ 白陽聖廟</a>
+        </div>
+        <button class="btn-confirm" id="btnConfirm">✅ 確認完成按讚</button>
+      </div>
+      <div id="step3" style="display:none">
+        <div style="font-size:2rem;margin-bottom:8px">✅</div>
+        <div style="color:#4caf82;font-weight:bold">今日已完成簽到！</div>
+        <div style="color:rgba(170,196,232,.45);font-size:.75rem;margin-top:6px">明天再來繼續累積連續天數</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 排行榜 -->
+  <div id="tabRankContent" style="display:none">
+    <div class="card">
+      <div class="card-label">🏆 連續簽到排行榜</div>
+      <div id="lbList"><div style="text-align:center;color:rgba(170,196,232,.35);padding:20px;font-size:.82rem">載入中…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 慶祝 -->
+<div id="celebrate">
+  <div class="cel-card">
+    <div class="cel-emoji" id="celEmoji">🎉</div>
+    <div class="cel-title">簽到成功！</div>
+    <div class="cel-sub" id="celSub">繼續加油！</div>
+    <div class="cel-streak" id="celStreak">🔥 1 天</div>
+    <button class="btn-cel" id="btnCloseCel">太好了！</button>
+  </div>
+</div>
+
+<script>
+// ── 星星 ──────────────────────────────────
+const se = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('div'); s.className = 'star';
+  const sz = Math.random()*2.5+.5;
+  s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s;`;
+  se.appendChild(s);
+}
+
+// ── 設定 ──────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBhUXWzYXMc5ILZSXIYec_r1zoAGVFsRQ0",
+  authDomain:        "ikuantao-like.firebaseapp.com",
+  databaseURL:       "https://ikuantao-like-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "ikuantao-like",
+  storageBucket:     "ikuantao-like.firebasestorage.app",
+  messagingSenderId: "512599962813",
+  appId:             "1:512599962813:web:2d9e909f838954969bb3d4"
+};
+const DEMO = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
+
+// ── Firebase 初始化 ────────────────────────
+let fbAuth = null, fbDb = null;
+if (!DEMO) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth();
+  fbDb   = firebase.database();
+}
+
+// ── 工具 ──────────────────────────────────
+const today = () => new Date().toISOString().slice(0, 10);
+const BADGES = [
+  {days:3,  icon:'🌱', name:'入門'},
+  {days:7,  icon:'🔥', name:'熱忱'},
+  {days:30, icon:'⭐', name:'精進'},
+  {days:100,icon:'🏅', name:'虔誠'},
+  {days:365,icon:'👑', name:'傳道'},
+];
+
+function calcStreak(checkIns = {}) {
+  let streak = 0, d = new Date();
+  if (!checkIns[today()]) d.setDate(d.getDate() - 1);
+  while (checkIns[d.toISOString().slice(0, 10)]) {
+    streak++; d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+// ── Demo 本機資料 ──────────────────────────
+function demoUsers() { return JSON.parse(localStorage.getItem('demoUsers') || '{}'); }
+function saveDemo(d) { localStorage.setItem('demoUsers', JSON.stringify(d)); }
+
+let currentUser = null; // { uid, name, photo }
+
+// ── 資料讀寫 ───────────────────────────────
+async function getMyData() {
+  if (DEMO) return demoUsers()[currentUser.uid] || null;
+  const s = await fbDb.ref('users/' + currentUser.uid).once('value');
+  return s.exists() ? s.val() : null;
+}
+async function setMyData(data) {
+  if (DEMO) { const u = demoUsers(); u[currentUser.uid] = data; saveDemo(u); return; }
+  await fbDb.ref('users/' + currentUser.uid).set(data);
+}
+async function ensureUser() {
+  const d = await getMyData();
+  if (!d) {
+    await setMyData({ name: currentUser.name, photo: currentUser.photo || '', totalDays: 0, checkIns: {}, joinedAt: today() });
+  } else if (d.name !== currentUser.name) {
+    await setMyData({ ...d, name: currentUser.name, photo: currentUser.photo || '' });
+  }
+}
+async function doCheckIn() {
+  const t = today();
+  if (DEMO) {
+    const u = demoUsers(), me = u[currentUser.uid];
+    if (!me || me.checkIns?.[t]) return false;
+    me.checkIns[t] = true; me.totalDays = (me.totalDays || 0) + 1;
+    saveDemo(u); return true;
+  }
+  let ok = false;
+  await fbDb.ref('users/' + currentUser.uid).transaction(u => {
+    if (!u) return u;
+    if (u.checkIns?.[t]) { ok = false; return u; }
+    u.checkIns = { ...(u.checkIns || {}), [t]: true };
+    u.totalDays = (u.totalDays || 0) + 1;
+    ok = true; return u;
+  });
+  return ok;
+}
+function listenLeaderboard(cb) {
+  const toList = data => Object.values(data || {})
+    .map(u => ({ name: u.name, photo: u.photo || '', totalDays: u.totalDays || 0, streak: calcStreak(u.checkIns), badges: BADGES.filter(b => (u.totalDays||0) >= b.days) }))
+    .sort((a, b) => b.streak - a.streak || b.totalDays - a.totalDays);
+  if (DEMO) { cb(toList(demoUsers())); return; }
+  fbDb.ref('users').on('value', s => cb(toList(s.val())));
+}
+
+// ── UI ────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+}
+
+async function afterLogin() {
+  await ensureUser();
+  showPage('main');
+  if (DEMO) document.getElementById('demoBanner').style.display = 'block';
+  const av = document.getElementById('avatarEl');
+  if (currentUser.photo) av.innerHTML = `<img src="${currentUser.photo}" alt="">`;
+  else av.textContent = '🙏';
+  document.getElementById('unameTxt').textContent = currentUser.name;
+  await refreshStats();
+  listenLeaderboard(renderLB);
+}
+
+async function refreshStats() {
+  const d = await getMyData(); if (!d) return;
+  const streak = calcStreak(d.checkIns), total = d.totalDays || 0;
+  document.getElementById('sStreak').textContent = streak;
+  document.getElementById('sTotal').textContent = total;
+  document.getElementById('badgeList').innerHTML = BADGES.map(b =>
+    `<span class="badge${total < b.days ? ' locked' : ''}">${b.icon} ${b.name} ${b.days}天</span>`
+  ).join('');
+  const done = !!(d.checkIns?.[today()]);
+  document.getElementById('checkinStatus').textContent = done ? '✅ 今日已完成簽到' : '今日尚未簽到';
+  document.getElementById('step1').style.display = done ? 'none' : 'block';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step3').style.display = done ? 'block' : 'none';
+}
+
+function renderLB(list) {
+  const myRank = list.findIndex(u => u.name === currentUser.name) + 1;
+  document.getElementById('sRank').textContent = myRank > 0 ? '#' + myRank : '-';
+  const el = document.getElementById('lbList');
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;color:rgba(170,196,232,.35);padding:20px;font-size:.82rem">還沒有人簽到，快來第一名！</div>'; return; }
+  el.innerHTML = list.slice(0, 30).map((u, i) => {
+    const r = i + 1, rc = r === 1 ? 'r1' : r === 2 ? 'r2' : r === 3 ? 'r3' : '';
+    const re = r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '#' + r;
+    const isMe = u.name === currentUser.name;
+    const av = u.photo ? `<img src="${u.photo}" alt="">` : '🙏';
+    return `<div class="lb-row${isMe ? ' me' : ''}">
+      <div class="lb-rank ${rc}">${re}</div>
+      <div class="lb-av">${av}</div>
+      <div class="lb-name">${u.name}${isMe ? ' <span style="font-size:.65rem;color:#4a9eff">(我)</span>' : ''}</div>
+      <div style="font-size:.85rem">${u.badges.map(b => b.icon).join('')}</div>
+      <div style="text-align:right"><div class="lb-streak">🔥${u.streak}天</div><div class="lb-total">累計${u.totalDays}天</div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── 登入邏輯 ──────────────────────────────
+document.getElementById('btnGoogle').onclick = async () => {
+  if (DEMO) {
+    currentUser = { uid: 'demo_google', name: 'Google示範用戶', photo: '' };
+    localStorage.setItem('demoUID', currentUser.uid);
+    localStorage.setItem('demoName', currentUser.name);
+    await afterLogin(); return;
+  }
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await fbAuth.signInWithPopup(provider);
+  } catch(e) { alert('Google 登入失敗：' + e.message); }
+};
+
+document.getElementById('btnAnon').onclick = async () => {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { document.getElementById('nameInput').focus(); return; }
+  if (DEMO) {
+    const uid = localStorage.getItem('demoUID') || ('u_' + Math.random().toString(36).slice(2));
+    localStorage.setItem('demoUID', uid);
+    localStorage.setItem('demoName_' + uid, name);
+    currentUser = { uid, name, photo: '' };
+    await afterLogin(); return;
+  }
+  try {
+    await fbAuth.signInAnonymously();
+    // onAuthStateChanged 接手，但需要 name
+    window._pendingName = name;
+  } catch(e) { alert('登入失敗：' + e.message); }
+};
+
+document.getElementById('nameInput').onkeydown = e => { if (e.key === 'Enter') document.getElementById('btnAnon').click(); };
+
+// Firebase Auth 狀態
+if (!DEMO) {
+  fbAuth.onAuthStateChanged(async user => {
+    if (!user) { showPage('login'); return; }
+    currentUser = {
+      uid: user.uid,
+      name: user.isAnonymous ? (window._pendingName || localStorage.getItem('anonName_'+user.uid) || '匿名道親') : user.displayName,
+      photo: user.photoURL || ''
+    };
+    if (user.isAnonymous && window._pendingName) {
+      localStorage.setItem('anonName_'+user.uid, window._pendingName);
+      window._pendingName = null;
+    }
+    await afterLogin();
+  });
+}
+
+// 自動恢復 demo 登入
+if (DEMO) {
+  const uid = localStorage.getItem('demoUID');
+  const name = uid ? localStorage.getItem('demoName_'+uid) || localStorage.getItem('demoName') : null;
+  if (uid && name) { currentUser = { uid, name, photo: '' }; afterLogin(); }
+}
+
+// ── 簽到按鈕 ──────────────────────────────
+document.getElementById('btnCheckin').onclick = () => {
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = 'block';
+  document.getElementById('checkinStatus').textContent = '請完成兩個網站的按讚 →';
+  window.open('https://www.i-kuantao.com', '_blank');
+  setTimeout(() => window.open('https://www.baiyangtemple.com', '_blank'), 700);
+};
+
+document.getElementById('btnConfirm').onclick = async () => {
+  const ok = await doCheckIn();
+  if (!ok) { alert('今日已簽到囉！'); return; }
+  await refreshStats();
+  const d = await getMyData();
+  const streak = calcStreak(d.checkIns);
+  const emoji = streak >= 30 ? '👑' : streak >= 7 ? '🔥' : '🎉';
+  const sub = streak >= 365 ? '感恩護持一整年！您已是傳道者！' : streak >= 100 ? '百日功德，感恩您的虔誠！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來簽到！';
+  document.getElementById('celEmoji').textContent = emoji;
+  document.getElementById('celSub').textContent = sub;
+  document.getElementById('celStreak').textContent = '🔥 連續 ' + streak + ' 天';
+  document.getElementById('celebrate').classList.add('show');
+  listenLeaderboard(renderLB);
+};
+document.getElementById('btnCloseCel').onclick = () => document.getElementById('celebrate').classList.remove('show');
+
+// ── 分頁切換 ──────────────────────────────
+document.getElementById('tabHome').onclick = () => {
+  document.getElementById('tabHomeContent').style.display = 'block';
+  document.getElementById('tabRankContent').style.display = 'none';
+  document.getElementById('tabHome').classList.add('active');
+  document.getElementById('tabRank').classList.remove('active');
+};
+document.getElementById('tabRank').onclick = () => {
+  document.getElementById('tabHomeContent').style.display = 'none';
+  document.getElementById('tabRankContent').style.display = 'block';
+  document.getElementById('tabHome').classList.remove('active');
+  document.getElementById('tabRank').classList.add('active');
+};
+
+// ── 登出 ──────────────────────────────────
+document.getElementById('btnLogout').onclick = async () => {
+  if (!DEMO) await fbAuth.signOut();
+  localStorage.removeItem('demoUID');
+  location.reload();
+};
+</script>
+</body>
+</html>
