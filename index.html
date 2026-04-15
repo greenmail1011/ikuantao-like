@@ -570,14 +570,16 @@ function saveDemo(d) { localStorage.setItem('demoUsers', JSON.stringify(d)); }
 
 let currentUser = null; // { uid, name, photo }
 
-// ── 資料讀寫 ───────────────────────────────
+// ── 資料讀寫（DEMO / 本機模式 / Firebase）──
+const isLocal = () => DEMO || !!(currentUser && currentUser.isLocal);
+
 async function getMyData() {
-  if (DEMO) return demoUsers()[currentUser.uid] || null;
+  if (isLocal()) return demoUsers()[currentUser.uid] || null;
   const s = await fbDb.ref('users/' + currentUser.uid).once('value');
   return s.exists() ? s.val() : null;
 }
 async function setMyData(data) {
-  if (DEMO) { const u = demoUsers(); u[currentUser.uid] = data; saveDemo(u); return; }
+  if (isLocal()) { const u = demoUsers(); u[currentUser.uid] = data; saveDemo(u); return; }
   await fbDb.ref('users/' + currentUser.uid).set(data);
 }
 async function ensureUser() {
@@ -590,7 +592,7 @@ async function ensureUser() {
 }
 async function doCheckIn() {
   const t = today();
-  if (DEMO) {
+  if (isLocal()) {
     const u = demoUsers(), me = u[currentUser.uid];
     if (!me || me.checkIns?.[t]) return false;
     me.checkIns[t] = true; me.totalDays = (me.totalDays || 0) + 1;
@@ -610,7 +612,7 @@ function listenLeaderboard(cb) {
   const toList = data => Object.values(data || {})
     .map(u => ({ name: u.name, photo: u.photo || '', totalDays: u.totalDays || 0, streak: calcStreak(u.checkIns), badges: BADGES.filter(b => (u.totalDays||0) >= b.days) }))
     .sort((a, b) => b.streak - a.streak || b.totalDays - a.totalDays);
-  if (DEMO) { cb(toList(demoUsers())); return; }
+  if (isLocal()) { cb(toList(demoUsers())); return; }
   fbDb.ref('users').on('value', s => cb(toList(s.val())));
 }
 
@@ -740,7 +742,7 @@ function showPage(name) {
 async function afterLogin() {
   await ensureUser();
   showPage('main');
-  if (DEMO) document.getElementById('demoBanner').style.display = 'block';
+  if (isLocal()) document.getElementById('demoBanner').style.display = 'block';
   const av = document.getElementById('avatarEl');
   if (currentUser.photo) av.innerHTML = `<img src="${currentUser.photo}" alt="">`;
   else av.textContent = '🙏';
@@ -806,17 +808,27 @@ document.getElementById('btnGoogle').onclick = async () => {
 document.getElementById('btnAnon').onclick = async () => {
   const name = document.getElementById('nameInput').value.trim();
   if (!name) { document.getElementById('nameInput').focus(); return; }
-  if (DEMO) {
-    const uid = localStorage.getItem('demoUID') || ('u_' + Math.random().toString(36).slice(2));
-    localStorage.setItem('demoUID', uid);
-    localStorage.setItem('demoName_' + uid, name);
-    currentUser = { uid, name, photo: '' };
-    await afterLogin(); return;
-  }
+
+  // DEMO 模式或 Firebase 匿名登入失敗時，都走本機 localStorage
+  const useLocal = () => {
+    const uid = localStorage.getItem('anonUID') || ('u_' + Math.random().toString(36).slice(2, 10));
+    localStorage.setItem('anonUID', uid);
+    localStorage.setItem('anonName_' + uid, name);
+    currentUser = { uid, name, photo: '', isLocal: true };
+    afterLogin();
+  };
+
+  if (DEMO) { useLocal(); return; }
+
   try {
-    await fbAuth.signInAnonymously();
     window._pendingName = name;
-  } catch(e) { alert('登入失敗：' + e.message); }
+    await fbAuth.signInAnonymously();
+    // 成功：onAuthStateChanged 接手
+  } catch(e) {
+    // Firebase 匿名登入未開啟或失敗 → 改用本機模式（按讚功能照常）
+    console.warn('Firebase 匿名登入失敗，改用本機模式：', e.message);
+    useLocal();
+  }
 };
 
 document.getElementById('nameInput').onkeydown = e => { if (e.key === 'Enter') document.getElementById('btnAnon').click(); };
