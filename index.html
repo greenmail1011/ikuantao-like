@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>一貫道 · 每日按讚簽到</title>
+  <title>兩大網站｜集氣按讚簽到</title>
+  <!-- 👍 emoji favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👍</text></svg>">
 
   <!-- Firebase compat SDK（支援 file:// 本機開啟） -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -355,7 +357,7 @@
 <!-- 登入頁 -->
 <div id="page-login" class="page active">
   <div class="login-box">
-    <div class="login-logo">🙏</div>
+    <div class="login-logo">👍</div>
     <h2>每日按讚簽到</h2>
     <p class="login-sub">一貫道全球資訊網<br>白陽聖廟-天壇-官方網站<br>每日護持 · 功德累積</p>
 
@@ -369,10 +371,65 @@
   </div>
 </div>
 
+<!-- 匿名完成頁 -->
+<div id="page-anon-done" class="page">
+  <div class="app-header" style="margin-bottom:24px">
+    <h1>👍 每日按讚</h1>
+    <p>一貫道全球資訊網 · 白陽聖廟-天壇-官方網站<br>每日護持 · 功德累積</p>
+  </div>
+  <div class="card checkin-area">
+    <div style="font-size:2.5rem;margin-bottom:10px">✅</div>
+    <div style="color:#4caf82;font-weight:bold;font-size:1.1rem;margin-bottom:4px">今日已完成按讚！</div>
+    <div style="color:rgba(170,196,232,.45);font-size:.75rem;margin-bottom:20px">感謝您的每日護持</div>
+
+    <!-- 驗證連結 -->
+    <div style="padding-top:16px;border-top:1px solid rgba(255,255,255,.1)">
+      <div style="font-size:.72rem;color:rgba(170,196,232,.5);margin-bottom:10px;letter-spacing:1px">
+        🔍 點擊確認按讚紀錄
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px">
+        <a href="https://www.i-kuantao.com/web.php?html=ebook_list2&Fid=20211&Tsubject=601"
+           target="_blank" rel="noopener"
+           style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:14px;
+                  background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.28);
+                  color:#4a9eff;text-decoration:none;font-size:.82rem;font-weight:bold;"
+           onmouseover="this.style.background='rgba(74,158,255,.22)'"
+           onmouseout="this.style.background='rgba(74,158,255,.12)'">
+          <span style="font-size:1.2rem">🌐</span>
+          <span style="flex:1;text-align:left">一貫道全球資訊網</span>
+          <span style="font-size:.7rem;opacity:.6">點讚確認 →</span>
+        </a>
+        <a href="https://www.baiyangtemple.com/"
+           target="_blank" rel="noopener"
+           style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:14px;
+                  background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.28);
+                  color:#f0a500;text-decoration:none;font-size:.82rem;font-weight:bold;"
+           onmouseover="this.style.background='rgba(240,165,0,.22)'"
+           onmouseout="this.style.background='rgba(240,165,0,.12)'">
+          <span style="font-size:1.2rem">🏯</span>
+          <span style="flex:1;text-align:left">白陽聖廟</span>
+          <span style="font-size:.7rem;opacity:.6">點讚確認 →</span>
+        </a>
+      </div>
+      <!-- 分享驗證連結 -->
+      <div id="anonVerifyArea" style="display:none">
+        <div class="verify-label" style="font-size:.72rem;color:rgba(170,196,232,.5);margin-bottom:8px;letter-spacing:1px">
+          📋 分享驗證連結
+        </div>
+        <div class="verify-url-box">
+          <span class="verify-url-text" id="anonVerifyUrl"></span>
+          <button class="btn-copy" onclick="copyVerifyUrl('anonVerifyUrl','anonVerifyMsg')">複製</button>
+        </div>
+        <div class="copy-toast" id="anonVerifyMsg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 主頁 -->
 <div id="page-main" class="page">
   <div class="app-header">
-    <h1>🙏 每日按讚</h1>
+    <h1>👍 每日按讚</h1>
     <p>一貫道全球資訊網 · 白陽聖廟-天壇-官方網站<br>每日護持 · 功德累積</p>
     <button onclick="addBookmark()" style="
       margin-top:10px;padding:6px 16px;border-radius:20px;border:none;
@@ -1363,8 +1420,18 @@ async function runCheckinFlow() {
   const token = genToken();
   await saveVerification(token, { name: currentUser.name, date: today(), streak, sites: SITES.map(s => s.name), ts: Date.now() });
   saveMyToken(token);
-  showVerifyLink(token);
 
+  // 匿名用戶：導到簡化完成頁，只顯示驗證連結
+  if (currentUser.isLocal || currentUser.isAnon) {
+    showPage('anon-done');
+    const url = buildVerifyUrl(token);
+    document.getElementById('anonVerifyUrl').textContent = url;
+    document.getElementById('anonVerifyArea').style.display = 'block';
+    return;
+  }
+
+  // 一般用戶：完整慶祝 + 驗證連結
+  showVerifyLink(token);
   const emoji = streak >= 30 ? '👑' : streak >= 7 ? '🔥' : '🎉';
   const sub = streak >= 365 ? '🏆 年讚達人！365天全勤，太厲害了！' : streak >= 100 ? '🏅 百讚百勝！連續100天，持續精進！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來！';
   document.getElementById('celEmoji').textContent = emoji;
