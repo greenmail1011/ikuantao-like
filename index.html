@@ -364,9 +364,8 @@
       使用 Google 帳號登入
     </button>
 
-    <div class="divider">或使用暱稱登入</div>
-    <input class="name-input" id="nameInput" type="text" placeholder="輸入您的暱稱（最多12字）" maxlength="12">
-    <button class="btn-anon" id="btnAnon">👤 匿名登入</button>
+    <div class="divider">或</div>
+    <button class="btn-anon" id="btnAnon">👤 匿名按讚</button>
   </div>
 </div>
 
@@ -964,12 +963,12 @@ document.getElementById('btnGoogle').onclick = async () => {
 };
 
 document.getElementById('btnAnon').onclick = async () => {
-  const name = document.getElementById('nameInput').value.trim();
-  if (!name) { document.getElementById('nameInput').focus(); return; }
+  // 自動產生隨機暱稱
+  const uid  = localStorage.getItem('anonUID') || ('u_' + Math.random().toString(36).slice(2, 10));
+  const name = localStorage.getItem('anonName_' + uid) || ('道親' + uid.slice(-4).toUpperCase());
 
   // DEMO 模式或 Firebase 匿名登入失敗時，都走本機 localStorage
   const useLocal = () => {
-    const uid = localStorage.getItem('anonUID') || ('u_' + Math.random().toString(36).slice(2, 10));
     localStorage.setItem('anonUID', uid);
     localStorage.setItem('anonName_' + uid, name);
     currentUser = { uid, name, photo: '', isLocal: true };
@@ -989,7 +988,6 @@ document.getElementById('btnAnon').onclick = async () => {
   }
 };
 
-document.getElementById('nameInput').onkeydown = e => { if (e.key === 'Enter') document.getElementById('btnAnon').click(); };
 
 // Firebase Auth 狀態
 if (!DEMO) {
