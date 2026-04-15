@@ -1305,24 +1305,21 @@ document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('step1').style.display = 'none';
   document.getElementById('checkinStatus').textContent = '🤖 讀取按讚數中…';
 
-  // ── 先抓真實按讚數（動畫開始前），失敗用預設值 ──
+  // ── 視窗必須在任何 await 之前同步開啟 ──
+  // 手機瀏覽器（iOS Safari）在 await 之後呼叫 window.open 會被封鎖
+  const tiny = `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
+               'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0';
+  const win0 = window.open('about:blank', 'lw0', tiny);
+  const win1 = window.open('about:blank', 'lw1', tiny);
+  const darkHtml = '<html><body style="margin:0;background:#080f2e;overflow:hidden"></body></html>';
+  try { win0.document.write(darkHtml); win0.document.close(); } catch(e) {}
+  try { win1.document.write(darkHtml); win1.document.close(); } catch(e) {}
+
+  // ── 非同步抓取真實按讚數（視窗已開好，可以 await 了）──
   const counts = await Promise.all(
     SITES.map(s => fetchLikeCount(s.widget, s.fallbackCount))
   );
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
-
-  // ── Popup form POST：兩個視窗同時開（使用者手勢內），各自送完立刻關 ──
-  const tiny = `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
-               'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0';
-
-  // 同步開兩個視窗（必須在 await 之前，確保在使用者手勢內）
-  const win0 = window.open('about:blank', 'lw0', tiny);
-  const win1 = window.open('about:blank', 'lw1', tiny);
-
-  // 把兩個視窗的 about:blank 塗成 app 的深藍背景
-  const darkHtml = '<html><body style="margin:0;background:#080f2e;overflow:hidden"></body></html>';
-  try { win0.document.write(darkHtml); win0.document.close(); } catch(e) {}
-  try { win1.document.write(darkHtml); win1.document.close(); } catch(e) {}
 
   // 第一站：POST 送出後 350ms 關閉（回應還沒到就關掉）
   document.getElementById('likeForm0').target = 'lw0';
