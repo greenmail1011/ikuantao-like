@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>*{margin:0;padding:0}body{background:#000;overflow:hidden}</style>
+</head>
+<body>
+<script>
+  // 此頁面由按讚系統自動開啟，完成後自動關閉
+  try {
+    window.close();
+  } catch(e) {}
+  // 備援：若 close 失敗，導回主頁
+  setTimeout(() => {
+    window.location.href = './';
+  }, 800);
+</script>
+</body>
+</html>
