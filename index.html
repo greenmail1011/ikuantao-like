@@ -273,6 +273,43 @@
     .verify-fail .v-title{color:#ff6b6b}
 
     .demo-banner{background:rgba(240,165,0,.13);border:1px solid rgba(240,165,0,.3);border-radius:10px;padding:9px 14px;font-size:.74rem;color:rgba(240,208,112,.8);margin-bottom:12px;text-align:center;line-height:1.7}
+
+    /* ── 植物養成 ── */
+    .plant-wrap{text-align:center;padding:6px 0 4px}
+    .plant-emoji-box{
+      font-size:3.8rem;display:inline-block;position:relative;
+      margin-bottom:8px;line-height:1;cursor:default;
+      filter:drop-shadow(0 4px 12px rgba(76,175,130,.3));
+      transition:transform .3s;
+    }
+    .plant-emoji-box.bounce{animation:plantBounce .5s ease}
+    @keyframes plantBounce{0%,100%{transform:translateY(0) scale(1)}40%{transform:translateY(-12px) scale(1.1)}70%{transform:translateY(-4px) scale(1.04)}}
+    .water-drop{
+      position:absolute;font-size:1.4rem;left:50%;top:-18px;
+      transform:translateX(-50%);pointer-events:none;
+      animation:dropFall .75s ease-out forwards;
+    }
+    @keyframes dropFall{from{top:-24px;opacity:1}to{top:60%;opacity:0}}
+    .plant-name{font-weight:bold;font-size:.95rem;color:#4caf82;margin-bottom:3px}
+    .plant-desc{font-size:.72rem;color:rgba(170,196,232,.5);margin-bottom:12px;line-height:1.5}
+    .plant-footer{display:flex;justify-content:space-between;align-items:center}
+    .plant-water-lbl{font-size:.74rem;color:rgba(170,196,232,.4)}
+    .plant-water-lbl.done{color:#4a9eff}
+    .seed-pill{
+      background:rgba(240,208,112,.12);border:1px solid rgba(240,208,112,.25);
+      border-radius:20px;padding:4px 12px;font-size:.74rem;color:#f0d070;
+      display:flex;align-items:center;gap:5px;
+    }
+    /* 種子獎勵 toast */
+    .seed-toast{
+      position:fixed;top:24px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(135deg,#f0d070,#e0a020);color:#1a0a00;
+      font-weight:bold;font-size:.9rem;padding:10px 24px;border-radius:30px;
+      box-shadow:0 6px 24px rgba(240,180,0,.4);z-index:500;
+      animation:toastIn .35s ease,toastOut .4s ease 2.2s forwards;pointer-events:none;
+    }
+    @keyframes toastIn{from{top:0;opacity:0}to{top:24px;opacity:1}}
+    @keyframes toastOut{from{opacity:1}to{opacity:0}}
   </style>
 </head>
 <body>
@@ -360,6 +397,22 @@
       <div class="card-label">🎖️ 成就徽章</div>
       <div class="badges" id="badgeList"></div>
     </div>
+    <!-- 植物養成卡 -->
+    <div class="card">
+      <div class="card-label">🌿 每日灌溉養成</div>
+      <div class="plant-wrap">
+        <div class="plant-emoji-box" id="plantBox">
+          <span id="plantEmoji">🪨</span>
+        </div>
+        <div class="plant-name" id="plantName">乾燥土壤</div>
+        <div class="plant-desc" id="plantDesc">開始每日按讚，讓種子發芽！</div>
+        <div class="plant-footer">
+          <span class="plant-water-lbl" id="plantWaterLbl">💧 今日尚未澆水</span>
+          <span class="seed-pill">🌾 種子 <span id="seedCount">0</span> 顆</span>
+        </div>
+      </div>
+    </div>
+
     <div class="card checkin-area">
       <div class="checkin-status" id="checkinStatus">今日尚未簽到</div>
       <div id="step1"><button class="btn-checkin" id="btnCheckin">🤖 自動按讚簽到</button></div>
@@ -551,9 +604,64 @@ const BADGES = [
   {days:3,  icon:'🌱', name:'入門'},
   {days:7,  icon:'🔥', name:'熱忱'},
   {days:30, icon:'⭐', name:'精進'},
-  {days:100,icon:'🏅', name:'虔誠'},
-  {days:365,icon:'👑', name:'傳道'},
+  {days:100,icon:'🏅', name:'百讚百勝'},
+  {days:365,icon:'👑', name:'年讚達人'},
 ];
+
+// ── 植物養成 ──────────────────────────────
+const PLANTS = [
+  { min:0,   emoji:'🪨', name:'乾燥土壤', desc:'開始每日按讚，讓種子發芽！' },
+  { min:1,   emoji:'🌱', name:'嫩芽',     desc:'種子發芽了！繼續澆水！' },
+  { min:3,   emoji:'🌿', name:'小苗',     desc:'小苗茁壯成長中…' },
+  { min:7,   emoji:'🌵', name:'小植株',   desc:'連續7天！植物越來越健壯！' },
+  { min:14,  emoji:'🌾', name:'成長株',   desc:'兩週的堅持，欣欣向榮！' },
+  { min:30,  emoji:'🌳', name:'大樹',     desc:'一個月！化為參天大樹！' },
+  { min:100, emoji:'🌸', name:'百日之花', desc:'百讚百勝！百花齊放！' },
+  { min:365, emoji:'🌺', name:'傳說之花', desc:'年讚達人！傳說中的神奇之花！' },
+];
+
+function getPlant(streak) {
+  let s = PLANTS[0];
+  for (const p of PLANTS) { if (streak >= p.min) s = p; }
+  return s;
+}
+
+function updatePlantUI(streak, totalDays, done) {
+  const p = getPlant(streak);
+  const seeds = Math.floor(totalDays / 7);
+  document.getElementById('plantEmoji').textContent   = p.emoji;
+  document.getElementById('plantName').textContent    = p.name;
+  document.getElementById('plantDesc').textContent    = p.desc;
+  document.getElementById('seedCount').textContent    = seeds;
+  const lbl = document.getElementById('plantWaterLbl');
+  lbl.textContent  = done ? '💧 今日已澆水！' : '💧 今日尚未澆水';
+  lbl.className    = 'plant-water-lbl' + (done ? ' done' : '');
+}
+
+function animateWater(oldTotal, newTotal) {
+  // 澆水水滴動畫
+  const box = document.getElementById('plantBox');
+  const drop = document.createElement('span');
+  drop.className = 'water-drop'; drop.textContent = '💧';
+  box.appendChild(drop);
+  setTimeout(() => drop.remove(), 800);
+  box.classList.add('bounce');
+  setTimeout(() => box.classList.remove('bounce'), 600);
+
+  // 每滿 7 天顯示種子獎勵
+  const oldSeeds = Math.floor(oldTotal / 7);
+  const newSeeds = Math.floor(newTotal / 7);
+  const earned   = newSeeds - oldSeeds;
+  if (earned > 0) {
+    setTimeout(() => {
+      const t = document.createElement('div');
+      t.className = 'seed-toast';
+      t.textContent = `🌾 獲得種子 ×${earned}！每日灌溉 7 天的獎勵！`;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2800);
+    }, 800);
+  }
+}
 
 function calcStreak(checkIns = {}) {
   let streak = 0, d = new Date();
@@ -583,35 +691,54 @@ async function setMyData(data) {
   await fbDb.ref('users/' + currentUser.uid).set(data);
 }
 async function ensureUser() {
+  const anon = !!(currentUser.isLocal || currentUser.isAnon);
   const d = await getMyData();
   if (!d) {
-    await setMyData({ name: currentUser.name, photo: currentUser.photo || '', totalDays: 0, checkIns: {}, joinedAt: today() });
+    await setMyData({ name: currentUser.name, photo: currentUser.photo || '', totalDays: 0, checkIns: {}, joinedAt: today(), isAnon: anon });
   } else if (d.name !== currentUser.name) {
-    await setMyData({ ...d, name: currentUser.name, photo: currentUser.photo || '' });
+    await setMyData({ ...d, name: currentUser.name, photo: currentUser.photo || '', isAnon: anon });
   }
 }
 async function doCheckIn() {
   const t = today();
+  const ts = Date.now(); // 簽到時間戳記，用於同分時比較誰早
   if (isLocal()) {
     const u = demoUsers(), me = u[currentUser.uid];
     if (!me || me.checkIns?.[t]) return false;
-    me.checkIns[t] = true; me.totalDays = (me.totalDays || 0) + 1;
+    me.checkIns[t] = ts; me.totalDays = (me.totalDays || 0) + 1;
     saveDemo(u); return true;
   }
   let ok = false;
   await fbDb.ref('users/' + currentUser.uid).transaction(u => {
     if (!u) return u;
     if (u.checkIns?.[t]) { ok = false; return u; }
-    u.checkIns = { ...(u.checkIns || {}), [t]: true };
+    u.checkIns = { ...(u.checkIns || {}), [t]: ts };
     u.totalDays = (u.totalDays || 0) + 1;
     ok = true; return u;
   });
   return ok;
 }
 function listenLeaderboard(cb) {
+  const t = today();
   const toList = data => Object.values(data || {})
-    .map(u => ({ name: u.name, photo: u.photo || '', totalDays: u.totalDays || 0, streak: calcStreak(u.checkIns), badges: BADGES.filter(b => (u.totalDays||0) >= b.days) }))
-    .sort((a, b) => b.streak - a.streak || b.totalDays - a.totalDays);
+    .filter(u => !u.isAnon)   // 匿名用戶不進排行榜
+    .map(u => {
+      const checkinVal = u.checkIns?.[t];
+      // todayTs：今日簽到時間戳記（舊資料存 true 的視為最晚，排後面）
+      const todayTs = typeof checkinVal === 'number' ? checkinVal : Infinity;
+      return {
+        name: u.name, photo: u.photo || '',
+        totalDays: u.totalDays || 0,
+        streak: calcStreak(u.checkIns),
+        badges: BADGES.filter(b => (u.totalDays||0) >= b.days),
+        todayTs,
+      };
+    })
+    .sort((a, b) =>
+      b.streak   - a.streak   ||   // 第一：連續天數多的優先
+      b.totalDays - a.totalDays ||  // 第二：累計天數多的優先
+      a.todayTs  - b.todayTs       // 第三：今日簽到早的優先（小 ts = 早）
+    );
   if (isLocal()) { cb(toList(demoUsers())); return; }
   fbDb.ref('users').on('value', s => cb(toList(s.val())));
 }
@@ -764,6 +891,9 @@ async function refreshStats() {
   document.getElementById('step1').style.display = done ? 'none' : 'block';
   document.getElementById('step3').style.display = done ? 'block' : 'none';
 
+  // 更新植物養成顯示
+  updatePlantUI(streak, total, done);
+
   // 若今日已簽到，嘗試顯示今日驗證連結
   if (done) {
     const myTok = getMyToken();
@@ -838,9 +968,10 @@ if (!DEMO) {
   fbAuth.onAuthStateChanged(async user => {
     if (!user) { showPage('login'); return; }
     currentUser = {
-      uid: user.uid,
-      name: user.isAnonymous ? (window._pendingName || localStorage.getItem('anonName_'+user.uid) || '匿名道親') : user.displayName,
-      photo: user.photoURL || ''
+      uid:    user.uid,
+      name:   user.isAnonymous ? (window._pendingName || localStorage.getItem('anonName_'+user.uid) || '匿名道親') : user.displayName,
+      photo:  user.photoURL || '',
+      isAnon: user.isAnonymous,   // 匿名登入標記
     };
     if (user.isAnonymous && window._pendingName) {
       localStorage.setItem('anonName_'+user.uid, window._pendingName);
@@ -1189,11 +1320,18 @@ document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('robotOverlay').classList.remove('show');
 
   // 記錄簽到
+  const dBefore = await getMyData();
+  const totalBefore = dBefore?.totalDays || 0;
+
   const ok = await doCheckIn();
   if (!ok) { await refreshStats(); return; }
   await refreshStats();
   const d = await getMyData();
   const streak = calcStreak(d.checkIns);
+  const totalAfter = d.totalDays || 0;
+
+  // 澆水動畫 + 種子獎勵
+  animateWater(totalBefore, totalAfter);
 
   // ── 產生並儲存驗證 token ──
   const token = genToken();
@@ -1210,7 +1348,7 @@ document.getElementById('btnCheckin').onclick = async () => {
 
   // 慶祝
   const emoji = streak >= 30 ? '👑' : streak >= 7 ? '🔥' : '🎉';
-  const sub = streak >= 365 ? '感恩護持一整年！' : streak >= 100 ? '百日功德，感恩您的虔誠！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來！';
+  const sub = streak >= 365 ? '🏆 年讚達人！365天全勤，太厲害了！' : streak >= 100 ? '🏅 百讚百勝！連續100天，持續精進！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來！';
   document.getElementById('celEmoji').textContent = emoji;
   document.getElementById('celSub').textContent = sub;
   document.getElementById('celStreak').textContent = '🔥 連續 ' + streak + ' 天';
