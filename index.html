@@ -1325,18 +1325,19 @@ document.getElementById('btnCheckin').onclick = async () => {
   // 第一站：立刻送出
   sendLike(SITES[0].api);
 
-  // 500ms 後：POST 已送達 → 導回黑色 → 再送第二站
+  // 500ms 後：第一站 POST 已送達 → 送第二站
   setTimeout(() => {
-    try { likeWin.location.replace('about:blank'); } catch(e) {}  // 蓋掉數字
+    sendLike(SITES[1].api);
+
+    // 400ms 後：導到 close.html（同源），由它呼叫 window.close()
+    // iOS 無法從背景關閉前景分頁，但由分頁自己 close() 可以！
     setTimeout(() => {
-      try { likeWin.document.write(blackPage); likeWin.document.close(); } catch(e) {}
-      sendLike(SITES[1].api);                                      // 第二站
-      // 400ms 後關閉（POST 已送達）
-      setTimeout(() => {
-        try { likeWin.location.replace('about:blank'); } catch(e) {}
-        setTimeout(() => { try { likeWin.close(); } catch(e) {} }, 200);
-      }, 400);
-    }, 100);
+      try {
+        likeWin.location.href = location.origin + location.pathname.replace('index.html','') + 'close.html';
+      } catch(e) {
+        try { likeWin.close(); } catch(e2) {}
+      }
+    }, 400);
   }, 500);
 
   // ── 使用預設按讚數（避免等待，動畫即時開始）──
