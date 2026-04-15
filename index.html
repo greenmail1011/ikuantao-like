@@ -337,19 +337,6 @@
 <body>
 <div id="stars"></div>
 
-<!-- ── 隱藏表單（POST 送進短暫 popup，提交後立刻關閉）── -->
-<form id="likeForm0" action="https://www.i-kuantao.com/web.php"
-      method="POST" target="likeWin" style="display:none">
-  <input name="html" value="Like_top">
-  <input name="header" value="no">
-  <input name="nofooter" value="yes">
-</form>
-<form id="likeForm1" action="https://www.baiyangtemple.com/web.php"
-      method="POST" target="likeWin" style="display:none">
-  <input name="html" value="Like_top">
-  <input name="header" value="no">
-  <input name="nofooter" value="yes">
-</form>
 
 <!-- ── 驗證頁模態框 ── -->
 <div id="verifyModal">
@@ -1305,30 +1292,23 @@ document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('step1').style.display = 'none';
   document.getElementById('checkinStatus').textContent = '🤖 讀取按讚數中…';
 
-  // ── 視窗必須在任何 await 之前同步開啟 ──
-  // 手機瀏覽器（iOS Safari）在 await 之後呼叫 window.open 會被封鎖
-  const tiny = `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
-               'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0';
-  const win0 = window.open('about:blank', 'lw0', tiny);
-  const win1 = window.open('about:blank', 'lw1', tiny);
-  const darkHtml = '<html><body style="margin:0;background:#080f2e;overflow:hidden"></body></html>';
-  try { win0.document.write(darkHtml); win0.document.close(); } catch(e) {}
-  try { win1.document.write(darkHtml); win1.document.close(); } catch(e) {}
+  // ── 透過 corsproxy 送出 POST（無 popup，手機桌機都可用）──
+  // corsproxy 作為伺服器轉發，繞過瀏覽器跨域限制
+  const PROXY = 'https://corsproxy.io/?';
+  const likeBody = 'html=Like_top&header=no&nofooter=yes';
+  Promise.all(SITES.map(s =>
+    fetch(PROXY + encodeURIComponent(s.api), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: likeBody
+    }).catch(() => {})
+  ));   // 不 await，讓按讚在背景執行，動畫同時跑
 
-  // ── 非同步抓取真實按讚數（視窗已開好，可以 await 了）──
+  // ── 抓真實按讚數（動畫用）──
   const counts = await Promise.all(
     SITES.map(s => fetchLikeCount(s.widget, s.fallbackCount))
   );
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
-
-  // ── 兩站同時立刻送出（手機需在 await 之前送，動畫只是視覺）──
-  document.getElementById('likeForm0').target = 'lw0';
-  document.getElementById('likeForm0').submit();
-  document.getElementById('likeForm1').target = 'lw1';
-  document.getElementById('likeForm1').submit();
-  // POST 已送達後關閉視窗
-  setTimeout(() => { try { win0.close(); } catch(e) {} }, 400);
-  setTimeout(() => { try { win1.close(); } catch(e) {} }, 400);
 
   // 重置進度點
   ['rp1','rp2'].forEach(id => {
