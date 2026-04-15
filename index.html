@@ -1292,17 +1292,9 @@ document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('step1').style.display = 'none';
   document.getElementById('checkinStatus').textContent = '🤖 讀取按讚數中…';
 
-  // ── 透過 corsproxy 送出 POST（無 popup，手機桌機都可用）──
-  // corsproxy 作為伺服器轉發，繞過瀏覽器跨域限制
-  const PROXY = 'https://corsproxy.io/?';
-  const likeBody = 'html=Like_top&header=no&nofooter=yes';
-  Promise.all(SITES.map(s =>
-    fetch(PROXY + encodeURIComponent(s.api), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: likeBody
-    }).catch(() => {})
-  ));   // 不 await，讓按讚在背景執行，動畫同時跑
+  // ── 透過 Cloudflare Worker 送出 POST（手機桌機都可用）──
+  fetch('https://like-proxy.greenmail1011.workers.dev/', { method: 'POST' })
+    .catch(() => {});   // 背景靜默執行，不 await
 
   // ── 抓真實按讚數（動畫用）──
   const counts = await Promise.all(
