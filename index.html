@@ -1321,16 +1321,14 @@ document.getElementById('btnCheckin').onclick = async () => {
   );
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
 
-  // 第一站：POST 送出後 350ms 關閉（回應還沒到就關掉）
+  // ── 兩站同時立刻送出（手機需在 await 之前送，動畫只是視覺）──
   document.getElementById('likeForm0').target = 'lw0';
   document.getElementById('likeForm0').submit();
-  setTimeout(() => { try { win0.close(); } catch(e) {} }, 350);
-
-  // 第二站：等動畫跑一段再送
-  await delay(1200);
   document.getElementById('likeForm1').target = 'lw1';
   document.getElementById('likeForm1').submit();
-  setTimeout(() => { try { win1.close(); } catch(e) {} }, 350);
+  // POST 已送達後關閉視窗
+  setTimeout(() => { try { win0.close(); } catch(e) {} }, 400);
+  setTimeout(() => { try { win1.close(); } catch(e) {} }, 400);
 
   // 重置進度點
   ['rp1','rp2'].forEach(id => {
