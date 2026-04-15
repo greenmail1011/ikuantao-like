@@ -278,17 +278,15 @@
 <body>
 <div id="stars"></div>
 
-<!-- ── 隱藏 iframe + 表單（靜默 POST，使用者看不到）── -->
-<iframe name="likeFrame0" style="display:none;width:0;height:0;border:0;position:absolute;left:-9999px"></iframe>
-<iframe name="likeFrame1" style="display:none;width:0;height:0;border:0;position:absolute;left:-9999px"></iframe>
+<!-- ── 隱藏表單（POST 送進短暫 popup，提交後立刻關閉）── -->
 <form id="likeForm0" action="https://www.i-kuantao.com/web.php"
-      method="POST" target="likeFrame0" style="display:none">
+      method="POST" target="likeWin" style="display:none">
   <input name="html" value="Like_top">
   <input name="header" value="no">
   <input name="nofooter" value="yes">
 </form>
 <form id="likeForm1" action="https://www.baiyangtemple.com/web.php"
-      method="POST" target="likeFrame1" style="display:none">
+      method="POST" target="likeWin" style="display:none">
   <input name="html" value="Like_top">
   <input name="header" value="no">
   <input name="nofooter" value="yes">
@@ -851,18 +849,47 @@ if (DEMO) {
 // ── 機器人自動按讚 ────────────────────────
 const SITES = [
   {
-    name: '一貫道全球資訊網',
-    url:  'https://www.i-kuantao.com/web.php?html=ebook_list2&Fid=20211&Tsubject=601',
-    api:  'https://www.i-kuantao.com/web.php',
-    dot:  'rp1'
+    name:          '一貫道全球資訊網',
+    url:           'https://www.i-kuantao.com/web.php?html=ebook_list2&Fid=20211&Tsubject=601',
+    api:           'https://www.i-kuantao.com/web.php',
+    widget:        'https://www.i-kuantao.com/web.php?html=Like_top&header=no&nofooter=yes',
+    fallbackCount: 705280,
+    dot:           'rp1'
   },
   {
-    name: '白陽聖廟',
-    url:  'https://www.baiyangtemple.com/',
-    api:  'https://www.baiyangtemple.com/web.php',
-    dot:  'rp2'
+    name:          '白陽聖廟',
+    url:           'https://www.baiyangtemple.com/',
+    api:           'https://www.baiyangtemple.com/web.php',
+    widget:        'https://www.baiyangtemple.com/web.php?html=Like_top&header=no&nofooter=yes',
+    fallbackCount: 965993,
+    dot:           'rp2'
   },
 ];
+
+// ── 透過 CORS Proxy 抓取真實按讚數 ─────────────────
+async function fetchLikeCount(widgetUrl, fallback) {
+  // 依序嘗試兩個免費 proxy
+  const proxies = [
+    `https://corsproxy.io/?${encodeURIComponent(widgetUrl)}`,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(widgetUrl)}`,
+  ];
+  for (let i = 0; i < proxies.length; i++) {
+    try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 6000);
+      const res  = await fetch(proxies[i], { signal: ctrl.signal });
+      clearTimeout(tid);
+      // allorigins 回傳 JSON，corsproxy 直接回傳 HTML
+      const html = i === 1 ? (await res.json()).contents : await res.text();
+      // 按讚數通常是 5～7 位數字，找最大那個
+      const nums = [...html.matchAll(/\b(\d{5,7})\b/g)]
+        .map(m => parseInt(m[1]))
+        .filter(n => n > 10000);
+      if (nums.length) return Math.max(...nums);
+    } catch(e) { /* 繼續試下一個 */ }
+  }
+  return fallback;   // 兩個都失敗就用預設值
+}
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -1009,16 +1036,11 @@ function getSiteMockup(site, count) {
 }
 
 // ── 機器人按讚主程式 ───────────────────────
-async function robotLikeSite(site) {
+async function robotLikeSite(site, baseCount) {
   const dot    = document.getElementById(site.dot);
   const mockup = document.getElementById('rbMockup');
   const cursor = document.getElementById('rbCursor');
   dot.classList.add('active');
-
-  // 模擬目前按讚數（接近真實的隨機值）
-  const baseCount = site.name === '一貫道全球資訊網'
-    ? 705200 + Math.floor(Math.random() * 100)
-    : 421000 + Math.floor(Math.random() * 100);
 
   // Step 1：載入中
   setRobotStatus(`正在開啟 ${site.name}…`);
@@ -1106,11 +1128,30 @@ async function robotLikeSite(site) {
 
 document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('step1').style.display = 'none';
+  document.getElementById('checkinStatus').textContent = '🤖 讀取按讚數中…';
+
+  // ── 先抓真實按讚數（動畫開始前），失敗用預設值 ──
+  const counts = await Promise.all(
+    SITES.map(s => fetchLikeCount(s.widget, s.fallbackCount))
+  );
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
 
-  // ── 隱藏 iframe form POST（靜默送出，無任何彈窗）──
+  // ── Popup form POST：開視窗 → 送出 → 關閉 ──
+  const likeOpts = 'width=400,height=300,left=0,top=0,toolbar=0,menubar=0,location=0,status=0,scrollbars=0';
+  const likeWin = window.open('about:blank', 'likeWin', likeOpts);
+
+  // 第一站
+  document.getElementById('likeForm0').target = 'likeWin';
   document.getElementById('likeForm0').submit();
+
+  // 等第一站送完，再送第二站
+  await delay(1200);
+  document.getElementById('likeForm1').target = 'likeWin';
   document.getElementById('likeForm1').submit();
+
+  // 送完後關閉
+  await delay(1000);
+  try { likeWin && likeWin.close(); } catch(e) {}
 
   // 重置進度點
   ['rp1','rp2'].forEach(id => {
@@ -1119,8 +1160,8 @@ document.getElementById('btnCheckin').onclick = async () => {
 
   document.getElementById('robotOverlay').classList.add('show');
 
-  for (const site of SITES) {
-    await robotLikeSite(site);
+  for (let i = 0; i < SITES.length; i++) {
+    await robotLikeSite(SITES[i], counts[i]);
   }
 
 
