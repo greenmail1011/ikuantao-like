@@ -1294,12 +1294,12 @@ document.getElementById('btnCheckin').onclick = async () => {
 
   // ── 透過 Cloudflare Worker 送出 POST（手機桌機都可用）──
   fetch('https://like-proxy.greenmail1011.workers.dev/', { method: 'POST' })
-    .catch(() => {});   // 背景靜默執行，不 await
+    .then(r => r.json())
+    .then(d => console.log('Worker 回應:', JSON.stringify(d)))
+    .catch(e => console.warn('Worker 失敗:', e));
 
-  // ── 抓真實按讚數（動畫用）──
-  const counts = await Promise.all(
-    SITES.map(s => fetchLikeCount(s.widget, s.fallbackCount))
-  );
+  // ── 使用預設按讚數（避免等待，動畫即時開始）──
+  const counts = SITES.map(s => s.fallbackCount + Math.floor(Math.random() * 50));
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
 
   // 重置進度點
