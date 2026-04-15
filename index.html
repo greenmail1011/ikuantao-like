@@ -1325,20 +1325,31 @@ document.getElementById('btnCheckin').onclick = async () => {
   // 第一站：立刻送出
   sendLike(SITES[0].api);
 
-  // 500ms 後：第一站 POST 已送達 → 送第二站
+  // 100ms：POST 已在網路傳輸 → 立刻把視窗導回黑色（在數字渲染前蓋掉）
   setTimeout(() => {
-    sendLike(SITES[1].api);
-
-    // 400ms 後：導到 close.html（同源），由它呼叫 window.close()
-    // iOS 無法從背景關閉前景分頁，但由分頁自己 close() 可以！
+    try { likeWin.location.replace('about:blank'); } catch(e) {}
     setTimeout(() => {
-      try {
-        likeWin.location.href = location.origin + location.pathname.replace('index.html','') + 'close.html';
-      } catch(e) {
-        try { likeWin.close(); } catch(e2) {}
-      }
-    }, 400);
-  }, 500);
+      try { likeWin.document.write(blackPage); likeWin.document.close(); } catch(e) {}
+
+      // 第二站送出
+      sendLike(SITES[1].api);
+
+      // 100ms 後再蓋黑
+      setTimeout(() => {
+        try { likeWin.location.replace('about:blank'); } catch(e) {}
+
+        // 再 100ms 後導到 close.html → window.close()
+        setTimeout(() => {
+          try {
+            const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+            likeWin.location.href = base + 'close.html';
+          } catch(e) {
+            try { likeWin.close(); } catch(e2) {}
+          }
+        }, 100);
+      }, 100);
+    }, 150);
+  }, 100);
 
   // ── 使用預設按讚數（避免等待，動畫即時開始）──
   const counts = SITES.map(s => s.fallbackCount + Math.floor(Math.random() * 50));
