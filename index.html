@@ -940,19 +940,36 @@ function showPage(name) {
 
 async function afterLogin() {
   await ensureUser();
+
+  // ── 匿名使用者：只顯示簡化完成頁 ──
+  if (isLocal() || currentUser.isAnon) {
+    showPage('anon-done');
+    const d = await getMyData();
+    const doneToday = !!(d?.checkIns?.[today()]);
+    if (doneToday) {
+      // 已完成：顯示驗證連結
+      const tok = getMyToken();
+      if (tok) {
+        document.getElementById('anonVerifyUrl').textContent = buildVerifyUrl(tok);
+        document.getElementById('anonVerifyArea').style.display = 'block';
+      }
+    }
+    // 自動觸發按讚流程（尚未完成時）
+    if (window._anonAutoCheckin) {
+      window._anonAutoCheckin = false;
+      await runCheckinFlow();
+    }
+    return;
+  }
+
+  // ── 一般使用者：完整主頁 ──
   showPage('main');
-  if (isLocal()) document.getElementById('demoBanner').style.display = 'block';
   const av = document.getElementById('avatarEl');
   if (currentUser.photo) av.innerHTML = `<img src="${currentUser.photo}" alt="">`;
   else av.textContent = '🙏';
   document.getElementById('unameTxt').textContent = currentUser.name;
   await refreshStats();
   listenLeaderboard(renderLB);
-  // 匿名使用者：登入後自動執行按讚流程（Firebase 匿名路徑用）
-  if (window._anonAutoCheckin) {
-    window._anonAutoCheckin = false;
-    await runCheckinFlow();
-  }
 }
 
 async function refreshStats() {
@@ -1029,9 +1046,8 @@ document.getElementById('btnAnon').onclick = async () => {
     localStorage.setItem('anonUID', uid);
     localStorage.setItem('anonName_' + uid, name);
     currentUser = { uid, name, photo: '', isLocal: true };
+    window._anonAutoCheckin = !alreadyDone;  // afterLogin 會接手
     await afterLogin();
-    // 直接跑動畫 + 記錄（不再需要手動點按鈕）
-    if (!alreadyDone) await runCheckinFlow();
   };
 
   if (DEMO) { useLocal(); return; }
@@ -1466,19 +1482,45 @@ document.getElementById('tabRank').onclick = () => {
 
 // ── 加入書籤 ──────────────────────────────
 function addBookmark() {
-  const url   = window.location.href;
-  const title = document.title;
-  // 現代瀏覽器不允許直接加書籤，顯示提示
-  if (window.sidebar && window.sidebar.addPanel) {         // Firefox 舊版
-    window.sidebar.addPanel(title, url, '');
-  } else if (window.external && ('AddFavorite' in window.external)) { // IE
-    window.external.AddFavorite(url, title);
-  } else {
-    // Chrome / Safari：只能提示使用者手動操作
-    const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
-    const shortcut = isMac ? '⌘ + D' : 'Ctrl + D';
-    alert(`請按 ${shortcut} 將此頁面加入書籤！\n\n或在瀏覽器網址列旁點擊 ⭐ 星號。`);
-  }
+  // 瀏覽器安全限制：JS 無法直接新增書籤，顯示美觀提示
+  const isMac    = /Mac|iPhone|iPad/.test(navigator.userAgent);
+  const isIOS    = /iPhone|iPad/.test(navigator.userAgent);
+  const shortcut = isMac && !isIOS ? '⌘ + D' : 'Ctrl + D';
+
+  // 移除舊提示
+  document.getElementById('bookmarkTip')?.remove();
+
+  const tip = document.createElement('div');
+  tip.id = 'bookmarkTip';
+  tip.style.cssText = `
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:linear-gradient(135deg,#0d2a5e,#1a4a8a);
+    border:1px solid rgba(240,208,112,.35);border-radius:20px;
+    padding:28px 32px;text-align:center;z-index:500;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);max-width:300px;width:90%;
+    animation:popIn .3s ease;
+  `;
+  tip.innerHTML = `
+    <div style="font-size:2.5rem;margin-bottom:10px">🔖</div>
+    <div style="color:#f0d070;font-weight:bold;font-size:1rem;margin-bottom:10px">加入書籤</div>
+    <div style="color:rgba(170,196,232,.7);font-size:.82rem;line-height:1.8;margin-bottom:16px">
+      ${isIOS
+        ? '點下方 <b style="color:#f0d070">分享</b> 按鈕<br>選擇「<b style="color:#f0d070">加入主畫面</b>」'
+        : `按 <b style="color:#f0d070">${shortcut}</b><br>或點網址列旁的 <b style="color:#f0d070">⭐ 星號</b>`
+      }
+    </div>
+    <button onclick="document.getElementById('bookmarkTip').remove()" style="
+      padding:8px 24px;border-radius:20px;border:none;
+      background:linear-gradient(135deg,#4a9eff,#2255aa);
+      color:white;font-size:.85rem;cursor:pointer;
+    ">了解</button>
+  `;
+  document.body.appendChild(tip);
+  // 點外部關閉
+  setTimeout(() => {
+    const close = e => { if (!tip.contains(e.target)) { tip.remove(); document.removeEventListener('click', close); } };
+    document.addEventListener('click', close);
+  }, 100);
 }
 
 // ── 登出 ──────────────────────────────────
