@@ -1136,22 +1136,29 @@ document.getElementById('btnCheckin').onclick = async () => {
   );
   document.getElementById('checkinStatus').textContent = '🤖 自動按讚中…';
 
-  // ── Popup form POST：開視窗 → 送出 → 關閉 ──
-  const likeOpts = 'width=400,height=300,left=0,top=0,toolbar=0,menubar=0,location=0,status=0,scrollbars=0';
-  const likeWin = window.open('about:blank', 'likeWin', likeOpts);
+  // ── Popup form POST：兩個視窗同時開（使用者手勢內），各自送完立刻關 ──
+  const tiny = `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
+               'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0';
 
-  // 第一站
-  document.getElementById('likeForm0').target = 'likeWin';
+  // 同步開兩個視窗（必須在 await 之前，確保在使用者手勢內）
+  const win0 = window.open('about:blank', 'lw0', tiny);
+  const win1 = window.open('about:blank', 'lw1', tiny);
+
+  // 把兩個視窗的 about:blank 塗成 app 的深藍背景
+  const darkHtml = '<html><body style="margin:0;background:#080f2e;overflow:hidden"></body></html>';
+  try { win0.document.write(darkHtml); win0.document.close(); } catch(e) {}
+  try { win1.document.write(darkHtml); win1.document.close(); } catch(e) {}
+
+  // 第一站：POST 送出後 350ms 關閉（回應還沒到就關掉）
+  document.getElementById('likeForm0').target = 'lw0';
   document.getElementById('likeForm0').submit();
+  setTimeout(() => { try { win0.close(); } catch(e) {} }, 350);
 
-  // 等第一站送完，再送第二站
+  // 第二站：等動畫跑一段再送
   await delay(1200);
-  document.getElementById('likeForm1').target = 'likeWin';
+  document.getElementById('likeForm1').target = 'lw1';
   document.getElementById('likeForm1').submit();
-
-  // 送完後關閉
-  await delay(1000);
-  try { likeWin && likeWin.close(); } catch(e) {}
+  setTimeout(() => { try { win1.close(); } catch(e) {} }, 350);
 
   // 重置進度點
   ['rp1','rp2'].forEach(id => {
