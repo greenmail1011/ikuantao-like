@@ -375,6 +375,15 @@
   <div class="app-header">
     <h1>🙏 每日按讚</h1>
     <p>一貫道全球資訊網 · 白陽聖廟-天壇-官方網站<br>每日護持 · 功德累積</p>
+    <button onclick="addBookmark()" style="
+      margin-top:10px;padding:6px 16px;border-radius:20px;border:none;
+      background:rgba(240,208,112,.15);border:1px solid rgba(240,208,112,.3);
+      color:#f0d070;font-size:.72rem;cursor:pointer;letter-spacing:1px;
+      transition:background .2s;
+    " onmouseover="this.style.background='rgba(240,208,112,.28)'"
+       onmouseout="this.style.background='rgba(240,208,112,.15)'">
+      🔖 加入書籤
+    </button>
   </div>
 
   <div id="demoBanner" class="demo-banner" style="display:none">
@@ -1293,23 +1302,21 @@ document.getElementById('btnCheckin').onclick = async () => {
   document.getElementById('checkinStatus').textContent = '🤖 讀取按讚數中…';
 
   // ── Popup 按讚（一個視窗，兩次 form POST）──
-  // window.open 必須同步呼叫（iOS 限制），form.submit 用 setTimeout 不需手勢
   const likeWin = window.open('about:blank', 'likeWin',
     `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
     'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0');
-  try {
-    likeWin.document.write('<html><body style="margin:0;background:#080f2e"></body></html>');
-    likeWin.document.close();
-  } catch(e) {}
 
-  // 建立表單並送出的輔助函式
-  function sendLike(url, targetWin) {
+  // 純黑背景 + 黑色文字 → 數字隱形，使用者看到的是黑色轉場
+  const blackPage = '<html><body style="margin:0;padding:0;background:#000;color:#000;overflow:hidden"></body></html>';
+  try { likeWin.document.write(blackPage); likeWin.document.close(); } catch(e) {}
+
+  // 建立並送出表單的輔助函式
+  function sendLike(url) {
     const f = document.createElement('form');
     f.method = 'POST'; f.action = url; f.target = 'likeWin';
-    ['html','header','nofooter'].forEach((n,i) => {
+    Object.entries({html:'Like_top', header:'no', nofooter:'yes'}).forEach(([n,v]) => {
       const inp = document.createElement('input');
-      inp.type = 'hidden'; inp.name = n;
-      inp.value = ['Like_top','no','yes'][i];
+      inp.type='hidden'; inp.name=n; inp.value=v;
       f.appendChild(inp);
     });
     document.body.appendChild(f);
@@ -1318,14 +1325,21 @@ document.getElementById('btnCheckin').onclick = async () => {
   }
 
   // 第一站：立刻送出
-  sendLike(SITES[0].api, likeWin);
+  sendLike(SITES[0].api);
 
-  // 第二站：1.5 秒後送（避免覆蓋第一站請求），不需 await
+  // 500ms 後：POST 已送達 → 導回黑色 → 再送第二站
   setTimeout(() => {
-    sendLike(SITES[1].api, likeWin);
-    // 送完後關閉（桌機看不見，iOS 短暫閃一下後關）
-    setTimeout(() => { try { likeWin.close(); } catch(e) {} }, 600);
-  }, 1500);
+    try { likeWin.location.replace('about:blank'); } catch(e) {}  // 蓋掉數字
+    setTimeout(() => {
+      try { likeWin.document.write(blackPage); likeWin.document.close(); } catch(e) {}
+      sendLike(SITES[1].api);                                      // 第二站
+      // 400ms 後關閉（POST 已送達）
+      setTimeout(() => {
+        try { likeWin.location.replace('about:blank'); } catch(e) {}
+        setTimeout(() => { try { likeWin.close(); } catch(e) {} }, 200);
+      }, 400);
+    }, 100);
+  }, 500);
 
   // ── 使用預設按讚數（避免等待，動畫即時開始）──
   const counts = SITES.map(s => s.fallbackCount + Math.floor(Math.random() * 50));
@@ -1419,6 +1433,23 @@ async function clearTodayCheckin() {
   localStorage.removeItem('myToken_' + t);
   document.getElementById('todayVerifyArea').style.display = 'none';
   await refreshStats();
+}
+
+// ── 加入書籤 ──────────────────────────────
+function addBookmark() {
+  const url   = window.location.href;
+  const title = document.title;
+  // 現代瀏覽器不允許直接加書籤，顯示提示
+  if (window.sidebar && window.sidebar.addPanel) {         // Firefox 舊版
+    window.sidebar.addPanel(title, url, '');
+  } else if (window.external && ('AddFavorite' in window.external)) { // IE
+    window.external.AddFavorite(url, title);
+  } else {
+    // Chrome / Safari：只能提示使用者手動操作
+    const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
+    const shortcut = isMac ? '⌘ + D' : 'Ctrl + D';
+    alert(`請按 ${shortcut} 將此頁面加入書籤！\n\n或在瀏覽器網址列旁點擊 ⭐ 星號。`);
+  }
 }
 
 // ── 登出 ──────────────────────────────────
