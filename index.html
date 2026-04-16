@@ -751,8 +751,7 @@ function saveDemo(d) { localStorage.setItem('demoUsers', JSON.stringify(d)); }
 let currentUser = null; // { uid, name, photo }
 
 // ── 資料讀寫（DEMO / 本機模式 / Firebase）──
-// isAnon 的 Firebase 匿名用戶也走 localStorage，避免 Firebase 規則擋住寫入
-const isLocal = () => DEMO || !!(currentUser && (currentUser.isLocal || currentUser.isAnon));
+const isLocal = () => DEMO || !!(currentUser && currentUser.isLocal);
 
 async function getMyData() {
   if (isLocal()) return demoUsers()[currentUser.uid] || null;
@@ -1031,37 +1030,17 @@ document.getElementById('btnGoogle').onclick = async () => {
 };
 
 document.getElementById('btnAnon').onclick = async () => {
-  // 自動產生隨機暱稱
+  // 匿名按讚完全走本機模式（localStorage），不依賴 Firebase
+  // 好處：手機桌機行為一致、不受 Firebase 規則限制、UID 穩定不變
   const uid  = localStorage.getItem('anonUID') || ('u_' + Math.random().toString(36).slice(2, 10));
   const name = localStorage.getItem('anonName_' + uid) || ('道親' + uid.slice(-4).toUpperCase());
+  localStorage.setItem('anonUID', uid);
+  localStorage.setItem('anonName_' + uid, name);
 
-  // 檢查今日是否已簽到（同步，localStorage）
-  const uData   = demoUsers();
-  const alreadyDone = !!(uData[uid]?.checkIns?.[today()]);
-
-  // 今日尚未按讚時，Worker 按讚會在 runCheckinFlow 裡執行
-
-  // DEMO 模式或 Firebase 匿名登入失敗時，都走本機 localStorage
-  const useLocal = async () => {
-    localStorage.setItem('anonUID', uid);
-    localStorage.setItem('anonName_' + uid, name);
-    currentUser = { uid, name, photo: '', isLocal: true };
-    window._anonAutoCheckin = !alreadyDone;  // afterLogin 會接手
-    await afterLogin();
-  };
-
-  if (DEMO) { useLocal(); return; }
-
-  try {
-    window._pendingName = name;
-    window._anonAutoCheckin = !alreadyDone;  // 旗標：登入後自動執行
-    await fbAuth.signInAnonymously();
-    // 成功：onAuthStateChanged 接手
-  } catch(e) {
-    // Firebase 匿名登入未開啟或失敗 → 改用本機模式（按讚功能照常）
-    console.warn('Firebase 匿名登入失敗，改用本機模式：', e.message);
-    useLocal();
-  }
+  const alreadyDone = !!(demoUsers()[uid]?.checkIns?.[today()]);
+  currentUser = { uid, name, photo: '', isLocal: true };
+  window._anonAutoCheckin = !alreadyDone;
+  await afterLogin();
 };
 
 
