@@ -751,7 +751,8 @@ function saveDemo(d) { localStorage.setItem('demoUsers', JSON.stringify(d)); }
 let currentUser = null; // { uid, name, photo }
 
 // ── 資料讀寫（DEMO / 本機模式 / Firebase）──
-const isLocal = () => DEMO || !!(currentUser && currentUser.isLocal);
+// isAnon 的 Firebase 匿名用戶也走 localStorage，避免 Firebase 規則擋住寫入
+const isLocal = () => DEMO || !!(currentUser && (currentUser.isLocal || currentUser.isAnon));
 
 async function getMyData() {
   if (isLocal()) return demoUsers()[currentUser.uid] || null;
@@ -941,8 +942,8 @@ function showPage(name) {
 async function afterLogin() {
   await ensureUser();
 
-  // ── 匿名使用者：只顯示簡化完成頁 ──
-  if (isLocal() || currentUser.isAnon) {
+  // ── 匿名使用者：只顯示簡化完成頁（isLocal() 已涵蓋 isAnon）──
+  if (isLocal()) {
     showPage('anon-done');
     const d = await getMyData();
     const doneToday = !!(d?.checkIns?.[today()]);
@@ -1421,7 +1422,7 @@ async function runCheckinFlow() {
   saveMyToken(token);
 
   // 匿名用戶：導到簡化完成頁，只顯示驗證連結
-  if (currentUser.isLocal || currentUser.isAnon) {
+  if (isLocal()) {
     showPage('anon-done');
     const url = buildVerifyUrl(token);
     document.getElementById('anonVerifyUrl').textContent = url;
