@@ -1038,8 +1038,7 @@ document.getElementById('btnAnon').onclick = async () => {
   const uData   = demoUsers();
   const alreadyDone = !!(uData[uid]?.checkIns?.[today()]);
 
-  // 若今日尚未按讚 → 立刻同步開 popup（必須在 await 前，iOS 才允許）
-  if (!alreadyDone) startLikePopup();
+  // 今日尚未按讚時，Worker 按讚會在 runCheckinFlow 裡執行
 
   // DEMO 模式或 Firebase 匿名登入失敗時，都走本機 localStorage
   const useLocal = async () => {
@@ -1371,40 +1370,19 @@ async function robotLikeSite(site, baseCount) {
   await delay(400);
 }
 
-// ── 共用：開 Popup 送按讚（必須同步呼叫，在使用者手勢內）──
-function startLikePopup() {
-  const base  = location.origin + location.pathname.replace(/[^/]*$/, '');
-  const features = `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
-                   'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0';
+// ── 共用：透過 Cloudflare Worker 送按讚（無 popup，手機桌機都適用）──
+const WORKER_URL = 'https://like-proxy.greenmail1011.workers.dev';
 
-  // 兩個視窗同步開啟（iOS 在使用者手勢內允許多個 window.open）
-  const win0 = window.open('about:blank', 'lw0', features);
-  const win1 = window.open('about:blank', 'lw1', features);
-
-  // 各自寫入「黑色 + 自動關閉」頁面
-  // 重要：timer 在 popup tab 自己的 context 跑，不受主頁暫停影響
-  const selfClose = (ms) =>
-    `<html><body style="margin:0;background:#000;overflow:hidden">` +
-    `<script>setTimeout(function(){window.location.replace('${base}close.html')},${ms})<\/script>` +
-    `</body></html>`;
-
-  try { win0.document.write(selfClose(600)); win0.document.close(); } catch(e) {}
-  try { win1.document.write(selfClose(600)); win1.document.close(); } catch(e) {}
-
-  // 送出兩個表單（同步，iOS 暫停前已執行完畢）
-  function sendLike(url, target) {
-    const f = document.createElement('form');
-    f.method = 'POST'; f.action = url; f.target = target;
-    Object.entries({html:'Like_top', header:'no', nofooter:'yes'}).forEach(([n,v]) => {
-      const inp = document.createElement('input'); inp.type='hidden'; inp.name=n; inp.value=v;
-      f.appendChild(inp);
-    });
-    document.body.appendChild(f); f.submit(); document.body.removeChild(f);
+async function sendLikesViaWorker() {
+  try {
+    const res = await fetch(WORKER_URL, { method: 'POST' });
+    const json = await res.json();
+    console.log('按讚結果:', JSON.stringify(json));
+    return json.ok;
+  } catch(e) {
+    console.warn('Worker 按讚失敗:', e.message);
+    return false;
   }
-
-  sendLike(SITES[0].api, 'lw0');   // 第一站（同步）
-  sendLike(SITES[1].api, 'lw1');   // 第二站（同步）
-  // 兩個 HTTP POST 已送進網路堆疊，各 popup tab 的 timer 會自動導向 close.html → window.close()
 }
 
 // ── 共用：動畫 + 記錄簽到 + 驗證連結 + 慶祝 ──
@@ -1415,9 +1393,15 @@ async function runCheckinFlow() {
   ['rp1','rp2'].forEach(id => { document.getElementById(id).className = 'rp-dot'; });
   document.getElementById('robotOverlay').classList.add('show');
 
+  // 同步發出 Worker 按讚（背景執行，不阻塞動畫）
+  const likePromise = sendLikesViaWorker();
+
   for (let i = 0; i < SITES.length; i++) {
     await robotLikeSite(SITES[i], counts[i]);
   }
+
+  // 等待 Worker 完成（動畫期間通常已結束）
+  await likePromise;
 
   setRobotStatus('🎉 兩個網站都按讚完成！');
   await delay(1200);
@@ -1458,8 +1442,7 @@ async function runCheckinFlow() {
 
 // ── 簽到按鈕（已登入使用者）──
 document.getElementById('btnCheckin').onclick = async () => {
-  startLikePopup();   // 同步：開 popup 送按讚
-  await runCheckinFlow();  // 動畫 + 記錄
+  await runCheckinFlow();  // 動畫 + Worker 按讚 + 記錄
 };
 
 document.getElementById('btnCloseCel').onclick = () => document.getElementById('celebrate').classList.remove('show');
