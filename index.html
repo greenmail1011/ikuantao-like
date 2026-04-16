@@ -216,63 +216,6 @@
     .cel-streak{font-size:2.2rem;font-weight:bold;color:#ff8c42;margin-bottom:14px}
     .btn-cel{padding:12px 32px;border-radius:50px;border:none;background:linear-gradient(135deg,#f0a500,#c97a00);color:white;font-size:.95rem;font-weight:bold;cursor:pointer}
 
-    /* 驗證連結區 */
-    .verify-area{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
-    .verify-label{font-size:.72rem;color:rgba(170,196,232,.5);margin-bottom:8px;letter-spacing:1px}
-    .verify-url-box{
-      display:flex;align-items:center;gap:6px;
-      background:rgba(0,0,0,.3);border:1px solid rgba(74,158,255,.25);
-      border-radius:10px;padding:8px 12px;margin-bottom:8px;
-    }
-    .verify-url-text{
-      flex:1;font-size:.68rem;color:#4a9eff;font-family:monospace;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;
-    }
-    .btn-copy{
-      flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;
-      background:linear-gradient(135deg,#4a9eff,#2255aa);color:white;
-      font-size:.72rem;font-weight:bold;cursor:pointer;transition:transform .15s;
-      white-space:nowrap;
-    }
-    .btn-copy:hover{transform:translateY(-1px)}
-    .copy-toast{font-size:.72rem;color:#4caf82;min-height:18px;transition:opacity .3s}
-
-    /* 驗證頁模態框 */
-    #verifyModal{
-      display:none;position:fixed;inset:0;z-index:400;
-      background:rgba(4,8,24,.95);backdrop-filter:blur(8px);
-      align-items:center;justify-content:center;
-    }
-    #verifyModal.show{display:flex}
-    .verify-card{
-      background:linear-gradient(135deg,#0a2040,#152e5a);
-      border:1px solid rgba(240,208,112,.3);border-radius:28px;
-      padding:40px 44px;text-align:center;
-      animation:popIn .35s ease-out;max-width:340px;width:90%;
-    }
-    .verify-card .v-emoji{font-size:4rem;margin-bottom:12px}
-    .verify-card .v-title{color:#f0d070;font-size:1.3rem;font-weight:bold;letter-spacing:2px;margin-bottom:16px}
-    .verify-card .v-name{color:white;font-size:1.1rem;font-weight:bold;margin-bottom:6px}
-    .verify-card .v-date{color:rgba(170,196,232,.55);font-size:.8rem;margin-bottom:12px}
-    .verify-card .v-streak{font-size:2rem;font-weight:bold;color:#ff8c42;margin-bottom:20px}
-    .verify-card .v-sites{font-size:.75rem;color:rgba(170,196,232,.5);margin-bottom:20px;line-height:1.8}
-    .verify-card .v-badge{
-      display:inline-flex;align-items:center;gap:6px;
-      background:rgba(76,175,130,.15);border:1px solid rgba(76,175,130,.35);
-      border-radius:20px;padding:6px 16px;font-size:.78rem;color:#4caf82;
-      margin-bottom:20px;
-    }
-    .btn-back{
-      padding:12px 32px;border-radius:50px;border:none;
-      background:linear-gradient(135deg,#4a9eff,#2255aa);
-      color:white;font-size:.9rem;font-weight:bold;cursor:pointer;
-      transition:transform .15s;
-    }
-    .btn-back:hover{transform:translateY(-2px)}
-
-    /* 驗證失敗 */
-    .verify-fail .v-emoji{filter:grayscale(1)}
-    .verify-fail .v-title{color:#ff6b6b}
 
     .demo-banner{background:rgba(240,165,0,.13);border:1px solid rgba(240,165,0,.3);border-radius:10px;padding:9px 14px;font-size:.74rem;color:rgba(240,208,112,.8);margin-bottom:12px;text-align:center;line-height:1.7}
 
@@ -340,19 +283,6 @@
 <div id="stars"></div>
 
 
-<!-- ── 驗證頁模態框 ── -->
-<div id="verifyModal">
-  <div class="verify-card" id="verifyCard">
-    <div class="v-emoji" id="vEmoji">✅</div>
-    <div class="v-title" id="vTitle">驗證成功！</div>
-    <div class="v-name" id="vName"></div>
-    <div class="v-date" id="vDate"></div>
-    <div class="v-streak" id="vStreak"></div>
-    <div class="v-sites" id="vSites"></div>
-    <div class="v-badge" id="vBadge">✅ 已完成今日按讚</div>
-    <button class="btn-back" onclick="window.location.href=window.location.origin+window.location.pathname">回主頁</button>
-  </div>
-</div>
 
 <!-- 登入頁 -->
 <div id="page-login" class="page active">
@@ -410,17 +340,6 @@
           <span style="flex:1;text-align:left">白陽聖廟</span>
           <span style="font-size:.7rem;opacity:.6">點讚確認 →</span>
         </a>
-      </div>
-      <!-- 分享驗證連結 -->
-      <div id="anonVerifyArea" style="display:none">
-        <div class="verify-label" style="font-size:.72rem;color:rgba(170,196,232,.5);margin-bottom:8px;letter-spacing:1px">
-          📋 分享驗證連結
-        </div>
-        <div class="verify-url-box">
-          <span class="verify-url-text" id="anonVerifyUrl"></span>
-          <button class="btn-copy" onclick="copyVerifyUrl('anonVerifyUrl','anonVerifyMsg')">複製</button>
-        </div>
-        <div class="copy-toast" id="anonVerifyMsg"></div>
       </div>
     </div>
   </div>
@@ -539,17 +458,6 @@
         </div>
 
 
-        <!-- 今日驗證連結（可分享） -->
-        <div id="todayVerifyArea" style="display:none;margin-top:14px">
-          <div class="verify-area">
-            <div class="verify-label">📋 分享驗證連結</div>
-            <div class="verify-url-box">
-              <span class="verify-url-text" id="todayVerifyUrl"></span>
-              <button class="btn-copy" onclick="copyVerifyUrl('todayVerifyUrl','todayVerifyCopyMsg')">複製</button>
-            </div>
-            <div class="copy-toast" id="todayVerifyCopyMsg"></div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -628,14 +536,6 @@
           <span>🏯</span><span style="flex:1;text-align:left">白陽聖廟</span><span style="font-size:.65rem;opacity:.6">確認 →</span>
         </a>
       </div>
-      <div class="verify-label" style="font-size:.72rem;color:rgba(170,196,232,.5);margin-bottom:8px;letter-spacing:1px">
-        📋 分享驗證連結
-      </div>
-      <div class="verify-url-box" id="verifyArea" style="display:none">
-        <span class="verify-url-text" id="verifyUrlText"></span>
-        <button class="btn-copy" onclick="copyVerifyUrl('verifyUrlText','verifyMsg')">複製</button>
-      </div>
-      <div class="copy-toast" id="verifyMsg"></div>
     </div>
   </div>
 </div>
@@ -782,11 +682,11 @@ async function doCheckIn() {
   }
   let ok = false;
   await fbDb.ref('users/' + currentUser.uid).transaction(u => {
-    if (!u) return u;
-    if (u.checkIns?.[t]) { ok = false; return u; }
-    u.checkIns = { ...(u.checkIns || {}), [t]: ts };
-    u.totalDays = (u.totalDays || 0) + 1;
-    ok = true; return u;
+    const data = u || { name: currentUser.name, photo: currentUser.photo || '', totalDays: 0, checkIns: {}, joinedAt: today() };
+    if (data.checkIns?.[t]) { ok = false; return data; }
+    data.checkIns = { ...(data.checkIns || {}), [t]: ts };
+    data.totalDays = (data.totalDays || 0) + 1;
+    ok = true; return data;
   });
   return ok;
 }
@@ -819,118 +719,7 @@ function listenLeaderboard(cb) {
 // ── 驗證連結功能 ───────────────────────────
 // ══════════════════════════════════════════
 
-/**
- * 產生確定性 token（相同 uid+date 永遠得到相同結果）
- * 這樣即使簽到時沒有存 token，事後也能補產生驗證連結。
- */
-function genToken(uid, date) {
-  let h = 5381;
-  const s = (uid || 'demo') + '|' + (date || today());
-  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
-  return (date || today()).replace(/-/g, '') + h.toString(36);
-}
 
-/** 儲存驗證記錄到 Firebase（匿名/DEMO 用戶改存 localStorage） */
-async function saveVerification(token, data) {
-  if (DEMO || isLocal()) {
-    localStorage.setItem('verify_' + token, JSON.stringify(data));
-    return;
-  }
-  await fbDb.ref('verifications/' + token).set(data);
-}
-
-/** 從 Firebase 或 localStorage 取得驗證記錄 */
-async function getVerification(token) {
-  // 先查 localStorage（DEMO / 匿名用戶的記錄存在這裡）
-  const local = localStorage.getItem('verify_' + token);
-  if (local) { try { return JSON.parse(local); } catch(e) {} }
-  if (DEMO) return null;
-  try {
-    const s = await fbDb.ref('verifications/' + token).once('value');
-    return s.exists() ? s.val() : null;
-  } catch(e) { return null; }
-}
-
-/** 儲存使用者今日的 token 供「已簽到」區塊顯示 */
-function saveMyToken(token) {
-  localStorage.setItem('myToken_' + today(), token);
-}
-function getMyToken() {
-  return localStorage.getItem('myToken_' + today()) || null;
-}
-
-/** 建立驗證連結 URL */
-function buildVerifyUrl(token) {
-  const base = location.origin + location.pathname;
-  return base + '?verify=' + token;
-}
-
-/** 複製驗證連結 */
-function copyVerifyUrl(urlElId, msgElId) {
-  const url = document.getElementById(urlElId).textContent;
-  navigator.clipboard.writeText(url).then(() => {
-    const msg = document.getElementById(msgElId);
-    msg.textContent = '✅ 已複製！';
-    msg.style.opacity = '1';
-    setTimeout(() => { msg.style.opacity = '0'; setTimeout(() => msg.textContent = '', 400); }, 2000);
-  }).catch(() => {
-    // 舊瀏覽器備援
-    const ta = document.createElement('textarea');
-    ta.value = url; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    const msg = document.getElementById(msgElId);
-    msg.textContent = '✅ 已複製！'; msg.style.opacity = '1';
-    setTimeout(() => { msg.style.opacity = '0'; setTimeout(() => msg.textContent = '', 400); }, 2000);
-  });
-}
-
-/** 在慶祝卡顯示分享驗證連結 */
-function showVerifyLink(token) {
-  const url = buildVerifyUrl(token);
-  document.getElementById('verifyUrlText').textContent = url;
-  document.getElementById('verifyArea').style.display = 'flex';
-}
-
-/** 在「已簽到」區塊顯示今日驗證連結（重新整理頁面後仍顯示） */
-function showTodayVerifyLink(token) {
-  const url = buildVerifyUrl(token);
-  document.getElementById('todayVerifyUrl').textContent = url;
-  document.getElementById('todayVerifyArea').style.display = 'block';
-}
-
-// ── 頁面載入時檢查 ?verify=TOKEN ─────────────
-const urlParams = new URLSearchParams(location.search);
-const verifyToken = urlParams.get('verify');
-if (verifyToken) {
-  // 直接顯示驗證頁，不需要登入
-  document.getElementById('page-login').classList.remove('active');
-  const modal = document.getElementById('verifyModal');
-  modal.classList.add('show');
-
-  (async () => {
-    const v = await getVerification(verifyToken);
-    if (v) {
-      document.getElementById('vEmoji').textContent = '✅';
-      document.getElementById('vTitle').textContent = '驗證成功！';
-      document.getElementById('vName').textContent = v.name + ' 已完成今日按讚';
-      document.getElementById('vDate').textContent = '📅 ' + v.date;
-      document.getElementById('vStreak').textContent = '🔥 連續 ' + v.streak + ' 天';
-      document.getElementById('vSites').innerHTML =
-        v.sites ? v.sites.map(s => '✅ ' + s).join('<br>') : '';
-      document.getElementById('vBadge').textContent = '✅ 已完成今日按讚';
-    } else {
-      // 驗證失敗
-      document.getElementById('verifyCard').classList.add('verify-fail');
-      document.getElementById('vEmoji').textContent = '❌';
-      document.getElementById('vTitle').textContent = '驗證失敗';
-      document.getElementById('vName').textContent = '找不到此驗證記錄';
-      document.getElementById('vDate').textContent = '連結可能已過期或有誤';
-      document.getElementById('vStreak').textContent = '';
-      document.getElementById('vSites').textContent = '';
-      document.getElementById('vBadge').style.display = 'none';
-    }
-  })();
-}
 
 // ── UI ────────────────────────────────────
 function showPage(name) {
@@ -946,14 +735,6 @@ async function afterLogin() {
     showPage('anon-done');
     const d = await getMyData();
     const doneToday = !!(d?.checkIns?.[today()]);
-    if (doneToday) {
-      // 已完成：顯示驗證連結
-      const tok = getMyToken();
-      if (tok) {
-        document.getElementById('anonVerifyUrl').textContent = buildVerifyUrl(tok);
-        document.getElementById('anonVerifyArea').style.display = 'block';
-      }
-    }
     // 自動觸發按讚流程（尚未完成時）
     if (window._anonAutoCheckin) {
       window._anonAutoCheckin = false;
@@ -987,12 +768,6 @@ async function refreshStats() {
 
   // 更新植物養成顯示
   updatePlantUI(streak, total, done);
-
-  // 若今日已簽到，嘗試顯示今日驗證連結
-  if (done) {
-    const myTok = getMyToken();
-    if (myTok) showTodayVerifyLink(myTok);
-  }
 }
 
 function renderLB(list) {
@@ -1396,21 +1171,13 @@ async function runCheckinFlow() {
   const streak = calcStreak(d.checkIns);
   animateWater(totalBefore, d.totalDays || 0);
 
-  const token = genToken();
-  try { await saveVerification(token, { name: currentUser.name, date: today(), streak, sites: SITES.map(s => s.name), ts: Date.now() }); } catch(e) { console.warn('saveVerification:', e.message); }
-  saveMyToken(token);
-
-  // 匿名用戶：導到簡化完成頁，只顯示驗證連結
+  // 匿名用戶：導到簡化完成頁
   if (isLocal()) {
     showPage('anon-done');
-    const url = buildVerifyUrl(token);
-    document.getElementById('anonVerifyUrl').textContent = url;
-    document.getElementById('anonVerifyArea').style.display = 'block';
     return;
   }
 
-  // 一般用戶：完整慶祝 + 驗證連結
-  showVerifyLink(token);
+  // 一般用戶：完整慶祝
   const emoji = streak >= 30 ? '👑' : streak >= 7 ? '🔥' : '🎉';
   const sub = streak >= 365 ? '🏆 年讚達人！365天全勤，太厲害了！' : streak >= 100 ? '🏅 百讚百勝！連續100天，持續精進！' : streak >= 30 ? '一個月連續，精進有成！' : streak >= 7 ? '連續七天，熱忱不減！' : '繼續加油，每天都來！';
   document.getElementById('celEmoji').textContent = emoji;
