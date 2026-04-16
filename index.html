@@ -1373,15 +1373,28 @@ async function robotLikeSite(site, baseCount) {
 
 // ── 共用：開 Popup 送按讚（必須同步呼叫，在使用者手勢內）──
 function startLikePopup() {
-  const likeWin = window.open('about:blank', 'likeWin',
-    `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
-    'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0');
-  const blackPage = '<html><body style="margin:0;padding:0;background:#000;color:#000;overflow:hidden"></body></html>';
-  try { likeWin.document.write(blackPage); likeWin.document.close(); } catch(e) {}
+  const base  = location.origin + location.pathname.replace(/[^/]*$/, '');
+  const features = `width=1,height=1,left=${screen.width+100},top=${screen.height+100},` +
+                   'toolbar=0,menubar=0,location=0,status=0,scrollbars=0,resizable=0';
 
-  function sendLike(url) {
+  // 兩個視窗同步開啟（iOS 在使用者手勢內允許多個 window.open）
+  const win0 = window.open('about:blank', 'lw0', features);
+  const win1 = window.open('about:blank', 'lw1', features);
+
+  // 各自寫入「黑色 + 自動關閉」頁面
+  // 重要：timer 在 popup tab 自己的 context 跑，不受主頁暫停影響
+  const selfClose = (ms) =>
+    `<html><body style="margin:0;background:#000;overflow:hidden">` +
+    `<script>setTimeout(function(){window.location.replace('${base}close.html')},${ms})<\/script>` +
+    `</body></html>`;
+
+  try { win0.document.write(selfClose(600)); win0.document.close(); } catch(e) {}
+  try { win1.document.write(selfClose(600)); win1.document.close(); } catch(e) {}
+
+  // 送出兩個表單（同步，iOS 暫停前已執行完畢）
+  function sendLike(url, target) {
     const f = document.createElement('form');
-    f.method = 'POST'; f.action = url; f.target = 'likeWin';
+    f.method = 'POST'; f.action = url; f.target = target;
     Object.entries({html:'Like_top', header:'no', nofooter:'yes'}).forEach(([n,v]) => {
       const inp = document.createElement('input'); inp.type='hidden'; inp.name=n; inp.value=v;
       f.appendChild(inp);
@@ -1389,23 +1402,9 @@ function startLikePopup() {
     document.body.appendChild(f); f.submit(); document.body.removeChild(f);
   }
 
-  sendLike(SITES[0].api);
-  setTimeout(() => {
-    try { likeWin.location.replace('about:blank'); } catch(e) {}
-    setTimeout(() => {
-      try { likeWin.document.write(blackPage); likeWin.document.close(); } catch(e) {}
-      sendLike(SITES[1].api);
-      setTimeout(() => {
-        try { likeWin.location.replace('about:blank'); } catch(e) {}
-        setTimeout(() => {
-          try {
-            const base = location.origin + location.pathname.replace(/[^/]*$/, '');
-            likeWin.location.href = base + 'close.html';
-          } catch(e) { try { likeWin.close(); } catch(e2) {} }
-        }, 100);
-      }, 100);
-    }, 150);
-  }, 100);
+  sendLike(SITES[0].api, 'lw0');   // 第一站（同步）
+  sendLike(SITES[1].api, 'lw1');   // 第二站（同步）
+  // 兩個 HTTP POST 已送進網路堆疊，各 popup tab 的 timer 會自動導向 close.html → window.close()
 }
 
 // ── 共用：動畫 + 記錄簽到 + 驗證連結 + 慶祝 ──
