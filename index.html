@@ -831,21 +831,21 @@ function genToken(uid, date) {
   return (date || today()).replace(/-/g, '') + h.toString(36);
 }
 
-/** 儲存驗證記錄到 Firebase（或 localStorage for DEMO） */
+/** 儲存驗證記錄到 Firebase（匿名/DEMO 用戶改存 localStorage） */
 async function saveVerification(token, data) {
-  if (DEMO) {
+  if (DEMO || isLocal()) {
     localStorage.setItem('verify_' + token, JSON.stringify(data));
     return;
   }
   await fbDb.ref('verifications/' + token).set(data);
 }
 
-/** 從 Firebase 取得驗證記錄 */
+/** 從 Firebase 或 localStorage 取得驗證記錄 */
 async function getVerification(token) {
-  if (DEMO) {
-    const v = localStorage.getItem('verify_' + token);
-    return v ? JSON.parse(v) : null;
-  }
+  // 先查 localStorage（DEMO / 匿名用戶的記錄存在這裡）
+  const local = localStorage.getItem('verify_' + token);
+  if (local) { try { return JSON.parse(local); } catch(e) {} }
+  if (DEMO) return null;
   try {
     const s = await fbDb.ref('verifications/' + token).once('value');
     return s.exists() ? s.val() : null;
@@ -1418,7 +1418,7 @@ async function runCheckinFlow() {
   animateWater(totalBefore, d.totalDays || 0);
 
   const token = genToken();
-  await saveVerification(token, { name: currentUser.name, date: today(), streak, sites: SITES.map(s => s.name), ts: Date.now() });
+  try { await saveVerification(token, { name: currentUser.name, date: today(), streak, sites: SITES.map(s => s.name), ts: Date.now() }); } catch(e) { console.warn('saveVerification:', e.message); }
   saveMyToken(token);
 
   // 匿名用戶：導到簡化完成頁，只顯示驗證連結
