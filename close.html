@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>*{margin:0;padding:0}body{background:#000;overflow:hidden}</style>
+</head>
+<body>
+<script>
+  // 按讚 popup 完成後由 opener 導向此頁，然後自動關閉
+  try { window.close(); } catch(e) {}
+  setTimeout(() => { try { window.close(); } catch(e) {} }, 100);
+  setTimeout(() => { try { window.close(); } catch(e) {} }, 300);
+  // 最終備援：若無法關閉（某些 iOS 情況），導回主頁
+  setTimeout(() => {
+    try { window.location.href = './'; } catch(e) {}
+  }, 1200);
+</script>
+</body>
+</html>
