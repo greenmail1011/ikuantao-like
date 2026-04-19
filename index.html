@@ -1159,18 +1159,18 @@ function openLikePopupsSync(skip) {
   );
   w.document.close();
 
-  // ② 700ms 後導向 like2.html，like2.html 自動送第二站（白陽聖廟）
+  // ② 250ms 後導向 like2.html（POST 瞬間就送出，伺服器已處理，不需等回應）
   //    HTML 規範允許 opener 設定跨域 popup 的 location
   setTimeout(() => {
     try { w.location.href = like2Url; } catch(e) {}
-  }, 700);
+  }, 250);
 
-  // ③ 再 700ms 後導向 close.html，close.html 呼叫 window.close() 關閉 popup
+  // ③ 再 250ms 後導向 close.html（白陽 POST 也已送出），close.html 自行關閉
   setTimeout(() => {
     try { w.location.href = closeUrl; } catch(e) {
       try { w.close(); } catch(e2) {}
     }
-  }, 1400);
+  }, 500);
 }
 
 // ── 共用：動畫 + 記錄簽到 + 驗證連結 + 慶祝 ──
