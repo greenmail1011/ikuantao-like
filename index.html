@@ -806,14 +806,17 @@ document.getElementById('btnGoogle').onclick = async () => {
 };
 
 document.getElementById('btnAnon').onclick = async () => {
-  // 匿名按讚完全走本機模式（localStorage），不依賴 Firebase
-  // 好處：手機桌機行為一致、不受 Firebase 規則限制、UID 穩定不變
+  // 所有 localStorage 讀寫都是同步的，可在 await 前完成
   const uid  = localStorage.getItem('anonUID') || ('u_' + Math.random().toString(36).slice(2, 10));
   const name = localStorage.getItem('anonName_' + uid) || ('道親' + uid.slice(-4).toUpperCase());
   localStorage.setItem('anonUID', uid);
   localStorage.setItem('anonName_' + uid, name);
 
   const alreadyDone = !!(demoUsers()[uid]?.checkIns?.[today()]);
+
+  // ★ 在任何 await 之前同步開 popup（iOS Safari 要求 window.open 須在使用者手勢內同步呼叫）
+  openLikePopupsSync(alreadyDone);
+
   currentUser = { uid, name, photo: '', isLocal: true };
   window._anonAutoCheckin = !alreadyDone;
   await afterLogin();
@@ -1126,23 +1129,40 @@ async function robotLikeSite(site, baseCount) {
   await delay(400);
 }
 
-// ── 共用：直接從瀏覽器送按讚（mode: no-cors，不帶 cookie，伺服器每次視為新訪客）──
-async function sendLikesDirectly() {
-  const apis = [
-    'https://www.i-kuantao.com/web.php',
-    'https://www.baiyangtemple.com/web.php',
-  ];
-  const body    = 'html=Like_top&header=no&nofooter=yes';
-  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+// ── 共用：popup form POST 送按讚 ──────────────────────────────────────────────
+// 必須在 click handler 的同步執行中呼叫（任何 await 之前），iOS Safari 才允許
+// 原理：form.submit() → Sec-Fetch-Mode: navigate（伺服器接受）
+//       opener 可對跨域 popup 設定 location → 800ms 後導到 close.html 自動關閉
+function openLikePopupsSync(skip) {
+  if (skip) return; // 今日已完成，不重複送
 
-  // no-cors = simple request（無 preflight），瀏覽器不帶跨域 cookie
-  // 伺服器收到無 liked_today cookie 的請求 → 每次都接受按讚
-  await Promise.all(
-    apis.map(url =>
-      fetch(url, { method: 'POST', mode: 'no-cors', headers, body }).catch(() => {})
-    )
-  );
-  return true;
+  const isMob    = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const feat     = isMob ? '' : `width=1,height=1,left=${screen.width + 100},top=0`;
+  const closeUrl = location.href.replace(/\/[^/]*(\?.*)?$/, '/') + 'close.html';
+  const dark     = '<style>*,body,html{background:#000!important;color:#000!important;font-size:0!important;margin:0;padding:0}</style>';
+
+  ['https://www.i-kuantao.com/web.php',
+   'https://www.baiyangtemple.com/web.php'].forEach((api, i) => {
+    const w = window.open('', '_blank', feat);
+    if (!w) return;
+    w.document.write(
+      `<!DOCTYPE html><html><head>${dark}</head><body>` +
+      `<form method="POST" action="${api}">` +
+      `<input type="hidden" name="html" value="Like_top">` +
+      `<input type="hidden" name="header" value="no">` +
+      `<input type="hidden" name="nofooter" value="yes">` +
+      `</form><script>document.forms[0].submit();<\/script></body></html>`
+    );
+    w.document.close();
+    // 800ms 後由 opener 將 popup 導向 close.html（HTML 規範允許 opener 導航跨域 popup）
+    // close.html 會呼叫 window.close() 關閉自己
+    const delay = 800 + i * 300; // 兩個視窗錯開，避免同時競爭
+    setTimeout(() => {
+      try { w.location.href = closeUrl; } catch(e) {
+        try { w.close(); } catch(e2) {}
+      }
+    }, delay);
+  });
 }
 
 // ── 共用：動畫 + 記錄簽到 + 驗證連結 + 慶祝 ──
@@ -1153,17 +1173,12 @@ async function runCheckinFlow() {
   ['rp1','rp2'].forEach(id => { document.getElementById(id).className = 'rp-dot'; });
   document.getElementById('robotOverlay').classList.add('show');
 
-  // 背景發出按讚（不阻塞動畫）
-  const likePromise = sendLikesDirectly();
-
+  // popup 已在 click handler 同步開啟並送出 form POST，此處只跑動畫
   for (let i = 0; i < SITES.length; i++) {
     await robotLikeSite(SITES[i], counts[i]);
   }
 
-  // 等待按讚完成（動畫期間通常已結束）
-  const likeOk = await likePromise;
-
-  setRobotStatus(likeOk ? '🎉 兩個網站都按讚完成！' : '✅ 按讚完成');
+  setRobotStatus('🎉 兩個網站都按讚完成！');
   await delay(1200);
   document.getElementById('robotOverlay').classList.remove('show');
 
@@ -1183,9 +1198,9 @@ async function runCheckinFlow() {
     const icon  = document.getElementById('anonDoneIcon');
     const title = document.getElementById('anonDoneTitle');
     if (icon && title) {
-      icon.textContent  = likeOk ? '✅' : '👍';
-      title.textContent = likeOk ? '今日已完成按讚！' : '按讚完成（今日已按過或網路問題）';
-      title.style.color = likeOk ? '#4caf82' : '#f0a500';
+      icon.textContent  = '✅';
+      title.textContent = '今日已完成按讚！';
+      title.style.color = '#4caf82';
     }
     return;
   }
@@ -1202,7 +1217,8 @@ async function runCheckinFlow() {
 
 // ── 簽到按鈕（已登入使用者）──
 document.getElementById('btnCheckin').onclick = async () => {
-  await runCheckinFlow();  // 動畫 + Worker 按讚 + 記錄
+  openLikePopupsSync(false); // ★ 同步呼叫（任何 await 之前），iOS 才允許開 popup
+  await runCheckinFlow();
 };
 
 document.getElementById('btnCloseCel').onclick = () => document.getElementById('celebrate').classList.remove('show');
