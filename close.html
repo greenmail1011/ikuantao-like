@@ -6,14 +6,14 @@
 </head>
 <body>
 <script>
-  // 此頁面由按讚系統自動開啟，完成後自動關閉
-  try {
-    window.close();
-  } catch(e) {}
-  // 備援：若 close 失敗，導回主頁
+  // 按讚 popup 完成後由 opener 導向此頁，然後自動關閉
+  try { window.close(); } catch(e) {}
+  setTimeout(() => { try { window.close(); } catch(e) {} }, 100);
+  setTimeout(() => { try { window.close(); } catch(e) {} }, 300);
+  // 最終備援：若無法關閉（某些 iOS 情況），導回主頁
   setTimeout(() => {
-    window.location.href = './';
-  }, 800);
+    try { window.location.href = './'; } catch(e) {}
+  }, 1200);
 </script>
 </body>
 </html>
