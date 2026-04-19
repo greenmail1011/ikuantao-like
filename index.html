@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -1159,18 +1158,27 @@ function openLikePopupsSync(skip) {
   );
   w.document.close();
 
-  // ② 250ms 後切離一貫道（POST 已送出且伺服器已處理）
-  //    HTML 規範允許 opener 設定跨域 popup 的 location
-  setTimeout(() => {
-    try { w.location.href = like2Url; } catch(e) {}
-  }, 250);
-
-  // ③ 900ms 後關閉（like2.html 有 650ms 載入並送出白陽 POST）
-  setTimeout(() => {
-    try { w.location.href = closeUrl; } catch(e) {
-      try { w.close(); } catch(e2) {}
+  // ② 輪詢偵測 popup 是否完成導向 i-kuantao（跨域 SecurityError = POST 回應已收到）
+  //    這樣不依賴固定時間，網路快慢都能確保 POST 完成才切換
+  const t0 = Date.now();
+  let phase1Done = false;
+  const poll = setInterval(() => {
+    if (phase1Done || w.closed) { clearInterval(poll); return; }
+    let crossOrigin = false;
+    try { void w.location.href; } catch(e) { crossOrigin = true; }
+    if (crossOrigin || Date.now() - t0 > 4000) { // 最多等 4 秒
+      phase1Done = true;
+      clearInterval(poll);
+      // i-kuantao POST 確認完成，立即切到 like2.html
+      try { w.location.href = like2Url; } catch(e) {}
+      // 給 like2.html 固定 800ms 載入並送出白陽 POST，再關閉
+      setTimeout(() => {
+        try { w.location.href = closeUrl; } catch(e) {
+          try { w.close(); } catch(e2) {}
+        }
+      }, 800);
     }
-  }, 900);
+  }, 50);
 }
 
 // ── 共用：動畫 + 記錄簽到 + 驗證連結 + 慶祝 ──
